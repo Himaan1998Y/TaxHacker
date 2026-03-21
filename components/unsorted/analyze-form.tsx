@@ -116,7 +116,7 @@ export default function AnalyzeForm({
       ...cachedResults,
     }
   }, [file.filename, settings, extraFields, file.cachedParseResult])
-  const [formData, setFormData] = useState(initialFormState)
+  const [formData, setFormData] = useState<Record<string, any>>(initialFormState)
 
   // Auto-open sections when AI fills them
   useEffect(() => {
@@ -137,7 +137,7 @@ export default function AnalyzeForm({
     if (gstin && gstinValidation?.valid) {
       const stateName = stateNameFromGSTIN(gstin)
       if (stateName && !formData.place_of_supply) {
-        setFormData((prev) => ({ ...prev, place_of_supply: stateName }))
+        setFormData((prev: Record<string, any>) => ({ ...prev, place_of_supply: stateName }))
       }
     }
   }, [formData.gstin, gstinValidation])
@@ -148,7 +148,7 @@ export default function AnalyzeForm({
     if (section) {
       const rate = getTDSRate(section)
       if (rate > 0 && !formData.tds_rate) {
-        setFormData((prev) => ({ ...prev, tds_rate: rate }))
+        setFormData((prev: Record<string, any>) => ({ ...prev, tds_rate: rate }))
       }
     }
   }, [formData.tds_section])
