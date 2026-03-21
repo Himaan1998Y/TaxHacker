@@ -3,7 +3,7 @@ import slugify from "slugify"
 import { twMerge } from "tailwind-merge"
 import { violet, tomato, red, crimson, pink, plum, purple, indigo, blue, sky, cyan, teal, mint, grass, lime, yellow, amber, orange, brown } from "@radix-ui/colors"
 
-const LOCALE = "en-US"
+const LOCALE = "en-IN"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -142,7 +142,7 @@ export function generateUUID(): string {
 export function formatPeriodLabel(period: string, date: Date): string {
   if (period.includes("-") && period.split("-").length === 3) {
     // Daily format: show day/month/year
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("en-IN", {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -150,9 +150,67 @@ export function formatPeriodLabel(period: string, date: Date): string {
     })
   } else {
     // Monthly format: show month/year with short month name
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("en-IN", {
       month: "short",
       year: "numeric",
     })
   }
+}
+
+// Indian number to words converter (for invoices: "Rupees One Lakh Twenty Three Thousand Only")
+const ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"]
+const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
+
+function twoDigitWords(n: number): string {
+  if (n < 20) return ONES[n]
+  const ten = Math.floor(n / 10)
+  const one = n % 10
+  return TENS[ten] + (one ? " " + ONES[one] : "")
+}
+
+export function numberToIndianWords(amount: number): string {
+  if (amount === 0) return "Zero"
+
+  const isNegative = amount < 0
+  amount = Math.abs(Math.round(amount))
+
+  const crore = Math.floor(amount / 10000000)
+  amount %= 10000000
+  const lakh = Math.floor(amount / 100000)
+  amount %= 100000
+  const thousand = Math.floor(amount / 1000)
+  amount %= 1000
+  const hundred = Math.floor(amount / 100)
+  const remainder = amount % 100
+
+  const parts: string[] = []
+  if (crore > 0) parts.push(twoDigitWords(crore) + " Crore")
+  if (lakh > 0) parts.push(twoDigitWords(lakh) + " Lakh")
+  if (thousand > 0) parts.push(twoDigitWords(thousand) + " Thousand")
+  if (hundred > 0) parts.push(ONES[hundred] + " Hundred")
+  if (remainder > 0) parts.push(twoDigitWords(remainder))
+
+  const words = parts.join(" ")
+  return (isNegative ? "Minus " : "") + words
+}
+
+export function amountToIndianWords(amount: number, currency: string = "INR"): string {
+  const whole = Math.floor(Math.abs(amount))
+  const paise = Math.round((Math.abs(amount) - whole) * 100)
+
+  let result = ""
+  if (currency === "INR") {
+    result = "Rupees " + numberToIndianWords(whole)
+    if (paise > 0) {
+      result += " and " + numberToIndianWords(paise) + " Paise"
+    }
+    result += " Only"
+  } else {
+    result = numberToIndianWords(whole)
+    if (paise > 0) {
+      result += " and " + numberToIndianWords(paise) + "/100"
+    }
+  }
+
+  return result
 }

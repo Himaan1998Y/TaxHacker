@@ -1,4 +1,5 @@
 import DashboardDropZoneWidget from "@/components/dashboard/drop-zone-widget"
+import { GSTSummaryWidget } from "@/components/dashboard/gst-summary-widget"
 import { StatsWidget } from "@/components/dashboard/stats-widget"
 import DashboardUnsortedWidget from "@/components/dashboard/unsorted-widget"
 import { WelcomeWidget } from "@/components/dashboard/welcome-widget"
@@ -34,6 +35,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <Separator />
 
       <StatsWidget filters={filters} />
+
+      <GSTSummaryWidget filters={filters} />
     </div>
   )
 }

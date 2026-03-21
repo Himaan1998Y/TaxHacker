@@ -10,6 +10,17 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
+// Indian Financial Year: April 1 → March 31
+function getCurrentFYStart(): Date {
+  const now = new Date()
+  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
+  return new Date(year, 3, 1) // April 1
+}
+
+function getFYLabel(startYear: number): string {
+  return `FY ${startYear}-${String(startYear + 1).slice(2)}`
+}
+
 export function DateRangePicker({
   defaultDate,
   defaultRange = "all-time",
@@ -19,7 +30,40 @@ export function DateRangePicker({
   defaultRange?: string
   onChange?: (date: DateRange | undefined) => void
 }) {
+  const fyStart = getCurrentFYStart()
+  const fyStartYear = fyStart.getFullYear()
+
   const predefinedRanges = [
+    {
+      code: "this-fy",
+      label: getFYLabel(fyStartYear),
+      range: { from: new Date(fyStartYear, 3, 1), to: new Date() },
+    },
+    {
+      code: "last-fy",
+      label: getFYLabel(fyStartYear - 1),
+      range: { from: new Date(fyStartYear - 1, 3, 1), to: new Date(fyStartYear, 2, 31) },
+    },
+    {
+      code: "q1-fy",
+      label: "Q1 (Apr–Jun)",
+      range: { from: new Date(fyStartYear, 3, 1), to: new Date(fyStartYear, 5, 30) },
+    },
+    {
+      code: "q2-fy",
+      label: "Q2 (Jul–Sep)",
+      range: { from: new Date(fyStartYear, 6, 1), to: new Date(fyStartYear, 8, 30) },
+    },
+    {
+      code: "q3-fy",
+      label: "Q3 (Oct–Dec)",
+      range: { from: new Date(fyStartYear, 9, 1), to: new Date(fyStartYear, 11, 31) },
+    },
+    {
+      code: "q4-fy",
+      label: "Q4 (Jan–Mar)",
+      range: { from: new Date(fyStartYear + 1, 0, 1), to: new Date(fyStartYear + 1, 2, 31) },
+    },
     {
       code: "last-4-weeks",
       label: "Last 4 weeks",
@@ -39,22 +83,6 @@ export function DateRangePicker({
       code: "quarter-to-date",
       label: "Quarter to date",
       range: { from: startOfQuarter(new Date()), to: new Date() },
-    },
-    {
-      code: `${new Date().getFullYear()}`,
-      label: `${new Date().getFullYear()}`,
-      range: {
-        from: new Date(new Date().getFullYear(), 0, 1),
-        to: new Date(),
-      },
-    },
-    {
-      code: `${new Date().getFullYear() - 1}`,
-      label: `${new Date().getFullYear() - 1}`,
-      range: {
-        from: new Date(new Date().getFullYear() - 1, 0, 1),
-        to: new Date(new Date().getFullYear(), 0, 1),
-      },
     },
     {
       code: "all-time",

@@ -19,7 +19,7 @@ export default function LandingPage() {
               />
               <div className="absolute inset-0 bg-gradient-to-r from-pink-600 to-indigo-600 rounded-full opacity-20 blur-md group-hover:opacity-40 transition-opacity duration-300" />
             </div>
-            <ColoredText className="text-2xl font-bold">TaxHacker</ColoredText>
+            <ColoredText className="text-2xl font-bold">TaxHacker India</ColoredText>
           </Link>
           <Link
             href="/enter"
@@ -43,10 +43,10 @@ export default function LandingPage() {
               🚀 Under Active Development
             </div>
             <h1 className="text-5xl font-bold tracking-tight sm:text-6xl mb-6 bg-gradient-to-r from-gray-900 via-pink-700 to-indigo-700 bg-clip-text text-transparent pb-2">
-              Let AI finally care about your taxes, scan your receipts and analyze your expenses
+              AI-powered GST, TDS & Indian tax assistant that scans your receipts and invoices
             </h1>
             <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto font-medium">
-              Self-hosted accounting app crafted for freelancers, indie-hackers and small businesses
+              Built for Indian freelancers, CAs, and small businesses. Auto-extract GSTIN, HSN, GST breakdowns from any invoice.
             </p>
             <div className="flex gap-4 justify-center text-sm md:text-lg">
               <Link
@@ -80,10 +80,10 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="flex flex-col gap-3 mb-4">
               <span className="text-6xl font-bold bg-gradient-to-r from-pink-600 to-indigo-600 bg-clip-text text-transparent">
-                F∗ck Taxes
+                GST Made Easy
               </span>
               <span className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                TaxHacker saves you time, money and nerves
+                Stop wasting hours on manual data entry. Let AI handle your Indian tax compliance.
               </span>
             </h2>
           </div>
@@ -100,23 +100,23 @@ export default function LandingPage() {
               <ul className="space-y-3 text-gray-700">
                 <li className="flex items-center">
                   <span className="text-blue-600 mr-3 text-lg">✨</span>
-                  Upload your receipts or invoices in PDF for automatic recognition
+                  Upload GST invoices, kirana bills, or handwritten receipts
                 </li>
                 <li className="flex items-center">
                   <span className="text-blue-600 mr-3 text-lg">✨</span>
-                  Extract key information like dates, items, and vendors
+                  Auto-extract GSTIN, HSN/SAC codes, CGST/SGST/IGST breakdowns
                 </li>
                 <li className="flex items-center">
                   <span className="text-blue-600 mr-3 text-lg">✨</span>
-                  Works with any language and any photo quality
+                  Works with Hindi, English, and mixed-language documents
                 </li>
                 <li className="flex items-center">
                   <span className="text-blue-600 mr-3 text-lg">✨</span>
-                  Automatically organize everything into a structured database
+                  Indian Financial Year (April-March) filtering with quarterly views
                 </li>
                 <li className="flex items-center">
                   <span className="text-blue-600 mr-3 text-lg">✨</span>
-                  Bulk upload and analyze multiple files at once
+                  GST summary dashboard: Input vs Output vs Net Payable
                 </li>
               </ul>
             </div>
@@ -345,11 +345,11 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-center">
                   <span className="text-indigo-600 mr-3 text-lg">🔑</span>
-                  Bring your own keys (OpenAI, Gemini, Mistral, etc.)
+                  Bring your own keys (OpenAI, Gemini, Mistral, OpenRouter)
                 </li>
               </ul>
               <Link
-                href="https://github.com/vas3k/TaxHacker"
+                href="https://github.com/Himaan1998Y/TaxHacker"
                 target="_blank"
                 className="block w-full text-center px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-full hover:from-violet-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-110"
               >
@@ -450,7 +450,7 @@ export default function LandingPage() {
               <ul className="space-y-3 text-gray-700">
                 <li className="flex items-center">
                   <span className="text-pink-600 mr-3 text-lg">📈</span>
-                  Monthly or quarterly VAT reports
+                  Monthly or quarterly GST reports
                 </li>
                 <li className="flex items-center">
                   <span className="text-pink-600 mr-3 text-lg">📈</span>
@@ -498,7 +498,7 @@ export default function LandingPage() {
               <ul className="space-y-3 text-gray-700">
                 <li className="flex items-center">
                   <span className="text-orange-600 mr-3 text-lg">🌍</span>
-                  Presets for different countries and industries
+                  Indian GST, TDS, and ITR presets built-in
                 </li>
                 <li className="flex items-center">
                   <span className="text-orange-600 mr-3 text-lg">🌍</span>
@@ -523,7 +523,7 @@ export default function LandingPage() {
               <div className="flex flex-col gap-4 max-w-md mx-auto">
                 <div className="flex flex-wrap items-center justify-center gap-4">
                   <a
-                    href="https://github.com/vas3k/TaxHacker"
+                    href="https://github.com/Himaan1998Y/TaxHacker"
                     target="_blank"
                     rel="noreferrer"
                     className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-full hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
@@ -539,12 +539,19 @@ export default function LandingPage() {
 
       <footer className="py-8 px-8 bg-gradient-to-r from-pink-50 to-indigo-50 border-t-2 border-gradient-to-r from-pink-200 to-indigo-200">
         <div className="max-w-7xl mx-auto text-center text-sm text-gray-600">
-          Made with ❤️ in Berlin by{" "}
+          Based on{" "}
           <Link
-            href="https://github.com/vas3k"
+            href="https://github.com/vas3k/TaxHacker"
             className="underline font-semibold hover:text-pink-600 transition-colors"
           >
-            @vas3k
+            TaxHacker
+          </Link>
+          {" "}by @vas3k. Indian edition by{" "}
+          <Link
+            href="https://github.com/Himaan1998Y"
+            className="underline font-semibold hover:text-pink-600 transition-colors"
+          >
+            Himanshu Jain
           </Link>
         </div>
 
@@ -579,7 +586,7 @@ export default function LandingPage() {
                 Cookie Policy
               </Link>
               <Link
-                href="https://github.com/vas3k/TaxHacker"
+                href="https://github.com/Himaan1998Y/TaxHacker"
                 target="_blank"
                 className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
               >

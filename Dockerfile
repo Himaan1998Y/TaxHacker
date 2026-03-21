@@ -7,8 +7,11 @@ ENV NODE_ENV=production
 # Build stage
 FROM base AS builder
 
-# Install dependencies required for Prisma
-RUN apt-get update && apt-get install -y openssl
+# Prevent OOM on memory-constrained VPS builds
+ENV NODE_OPTIONS="--max_old_space_size=4096"
+
+# Install dependencies required for Prisma and sharp
+RUN apt-get update && apt-get install -y openssl python3 make g++
 
 WORKDIR /app
 
@@ -35,6 +38,7 @@ RUN apt-get update && apt-get install -y \
     graphicsmagick \
     openssl \
     libwebp-dev \
+    libvips-dev \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
@@ -51,6 +55,9 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/app ./app
 COPY --from=builder /app/next.config.ts ./
+
+# Rebuild sharp for production OS (ensures native bindings match)
+RUN npm rebuild sharp
 
 # Copy and set up entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/

@@ -12,9 +12,15 @@ export const settingsFormSchema = z.object({
   google_model_name: z.string().default("gemini-2.5-flash"),
   mistral_api_key: z.string().optional(),
   mistral_model_name: z.string().default("mistral-medium-latest"),
-  llm_providers: z.string().default('openai,google,mistral'),
+  openrouter_api_key: z.string().optional(),
+  openrouter_model_name: z.string().default("google/gemini-2.5-flash"),
+  llm_providers: z.string().default('openai,google,mistral,openrouter'),
   prompt_analyse_new_file: z.string().optional(),
+  prompt_analyse_bank_statement: z.string().optional(),
   is_welcome_message_hidden: z.string().optional(),
+  business_gstin: z.string().max(15).optional(),
+  business_pan: z.string().max(10).optional(),
+  business_state_code: z.string().max(2).optional(),
 })
 
 export const currencyFormSchema = z.object({

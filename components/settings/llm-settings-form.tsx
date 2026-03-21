@@ -30,7 +30,7 @@ import { PROVIDERS } from "@/lib/llm-providers";
 function getInitialProviderOrder(settings: Record<string, string>) {
   let order: string[] = []
   if (!settings.llm_providers) {
-    order = ['openai', 'google', 'mistral']
+    order = ['openai', 'google', 'mistral', 'openrouter']
   } else {
     order = settings.llm_providers.split(",").map(p => p.trim())
   }
@@ -90,10 +90,17 @@ export default function LLMSettingsForm({
         <input type="hidden" name="llm_providers" value={providerOrder.join(",")} />
 
         <FormTextarea
-          title="Prompt for File Analysis Form"
+          title="Prompt for Invoice/Receipt Analysis"
           name="prompt_analyse_new_file"
           defaultValue={settings.prompt_analyse_new_file}
           className="h-96"
+        />
+
+        <FormTextarea
+          title="Prompt for Bank Statement Parsing"
+          name="prompt_analyse_bank_statement"
+          defaultValue={settings.prompt_analyse_bank_statement}
+          className="h-48"
         />
 
         <div className="flex flex-row items-center gap-4">

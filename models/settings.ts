@@ -9,32 +9,34 @@ export type SettingsMap = Record<string, string>
  * Helper to extract LLM provider settings from SettingsMap.
  */
 export function getLLMSettings(settings: SettingsMap) {
-  const priorities = (settings.llm_providers || "openai,google,mistral").split(",").map(p => p.trim()).filter(Boolean)
+  const priorities = (settings.llm_providers || "openai,google,mistral,openrouter").split(",").map(p => p.trim()).filter(Boolean)
 
-  const providers = priorities.map((provider) => {
-    if (provider === "openai") {
-      return {
-        provider: provider as LLMProvider,
-        apiKey: settings.openai_api_key || "",
-        model: settings.openai_model_name || PROVIDERS[0]['defaultModelName'],
-      }
-    }
-    if (provider === "google") {
-      return {
-        provider: provider as LLMProvider,
-        apiKey: settings.google_api_key || "",
-        model: settings.google_model_name || PROVIDERS[1]['defaultModelName'],
-      }
-    }
-    if (provider === "mistral") {
-      return {
-        provider: provider as LLMProvider,
-        apiKey: settings.mistral_api_key || "",
-        model: settings.mistral_model_name || PROVIDERS[2]['defaultModelName'],
-      }
-    }
-    return null
-  }).filter((provider): provider is NonNullable<typeof provider> => provider !== null)
+  const providerLookup: Record<string, () => { provider: LLMProvider; apiKey: string; model: string }> = {
+    openai: () => ({
+      provider: "openai" as LLMProvider,
+      apiKey: settings.openai_api_key || "",
+      model: settings.openai_model_name || PROVIDERS.find(p => p.key === "openai")?.defaultModelName || "gpt-4o-mini",
+    }),
+    google: () => ({
+      provider: "google" as LLMProvider,
+      apiKey: settings.google_api_key || "",
+      model: settings.google_model_name || PROVIDERS.find(p => p.key === "google")?.defaultModelName || "gemini-2.5-flash",
+    }),
+    mistral: () => ({
+      provider: "mistral" as LLMProvider,
+      apiKey: settings.mistral_api_key || "",
+      model: settings.mistral_model_name || PROVIDERS.find(p => p.key === "mistral")?.defaultModelName || "mistral-medium-latest",
+    }),
+    openrouter: () => ({
+      provider: "openrouter" as LLMProvider,
+      apiKey: settings.openrouter_api_key || "",
+      model: settings.openrouter_model_name || PROVIDERS.find(p => p.key === "openrouter")?.defaultModelName || "google/gemini-2.5-flash",
+    }),
+  }
+
+  const providers = priorities
+    .map((key) => providerLookup[key]?.())
+    .filter((provider): provider is NonNullable<typeof provider> => provider !== null && provider !== undefined)
 
   return {
     providers,

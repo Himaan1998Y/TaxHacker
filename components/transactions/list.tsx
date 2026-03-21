@@ -44,7 +44,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
     classes: "min-w-[100px]",
     sortable: true,
     formatValue: (transaction: Transaction) =>
-      transaction.issuedAt ? formatDate(transaction.issuedAt, "yyyy-MM-dd") : "",
+      transaction.issuedAt ? formatDate(transaction.issuedAt, "dd/MM/yyyy") : "",
   },
   projectCode: {
     name: "Project",

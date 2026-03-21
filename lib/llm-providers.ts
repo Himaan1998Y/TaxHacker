@@ -44,4 +44,19 @@ export const PROVIDERS = [
     },
     logo: "/logo/mistral.svg"
   },
+  {
+    key: "openrouter",
+    label: "OpenRouter",
+    apiKeyName: "openrouter_api_key",
+    modelName: "openrouter_model_name",
+    defaultModelName: "google/gemini-2.5-flash",
+    apiDoc: "https://openrouter.ai/keys",
+    apiDocLabel: "OpenRouter Dashboard",
+    placeholder: "sk-or-v1-...",
+    help: {
+      url: "https://openrouter.ai/keys",
+      label: "OpenRouter Dashboard"
+    },
+    logo: "/logo/openrouter.svg"
+  },
 ]
