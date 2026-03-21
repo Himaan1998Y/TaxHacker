@@ -13,9 +13,20 @@ import { Button } from "@/components/ui/button"
 import { TransactionData } from "@/models/transactions"
 import { Category, Currency, Field, Project, Transaction } from "@/prisma/client"
 import { format } from "date-fns"
-import { Loader2, Save, Trash2 } from "lucide-react"
+import { classifyTransaction, transactionToGSTR1 } from "@/lib/gstr1"
+import { AlertTriangle, Loader2, Save, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { startTransition, useActionState, useEffect, useMemo, useState } from "react"
+
+const SECTION_LABELS: Record<string, { label: string; color: string }> = {
+  b2b: { label: "B2B", color: "bg-blue-100 text-blue-800" },
+  b2cl: { label: "B2CL", color: "bg-purple-100 text-purple-800" },
+  b2cs: { label: "B2CS", color: "bg-green-100 text-green-800" },
+  exp: { label: "Export", color: "bg-orange-100 text-orange-800" },
+  nil: { label: "Nil Rated", color: "bg-gray-100 text-gray-700" },
+  exempt: { label: "Exempt", color: "bg-gray-100 text-gray-700" },
+  skip: { label: "Input (Expense)", color: "bg-yellow-50 text-yellow-700" },
+}
 
 export default function TransactionEditForm({
   transaction,
@@ -88,6 +99,9 @@ export default function TransactionEditForm({
   return (
     <form action={saveAction} className="space-y-4">
       <input type="hidden" name="transactionId" value={transaction.id} />
+
+      {/* GSTR-1 Classification Badge */}
+      <GSTR1Badge transaction={transaction} settings={settings} />
 
       <FormInput
         title={fieldMap.name.name}
@@ -250,5 +264,33 @@ export default function TransactionEditForm({
         {saveState?.error && <FormError>{saveState.error}</FormError>}
       </div>
     </form>
+  )
+}
+
+function GSTR1Badge({ transaction, settings }: { transaction: Transaction; settings: Record<string, string> }) {
+  const result = useMemo(() => {
+    const gstTx = transactionToGSTR1(transaction)
+    return classifyTransaction(gstTx, settings.business_state_code || null)
+  }, [transaction, settings])
+
+  const sectionInfo = SECTION_LABELS[result.section] || SECTION_LABELS.skip
+
+  return (
+    <div className="flex flex-wrap items-start gap-3 p-3 bg-muted/30 rounded-lg text-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">GST Filing:</span>
+        <span className={`px-2 py-0.5 rounded text-xs font-medium ${sectionInfo.color}`}>
+          {sectionInfo.label}
+        </span>
+      </div>
+      {result.warnings.length > 0 && (
+        <div className="flex items-start gap-1.5 text-yellow-700">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="text-xs">
+            {result.warnings.map((w, i) => <div key={i}>{w}</div>)}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

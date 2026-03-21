@@ -164,6 +164,47 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
     classes: "text-right",
     sortable: true,
   },
+  // Indian GST extra field renderers
+  gstin: {
+    name: "GSTIN",
+    code: "gstin",
+    classes: "font-mono text-xs min-w-[140px]",
+    sortable: false,
+    formatValue: (transaction: Transaction) => {
+      const gstin = (transaction.extra as any)?.gstin
+      return gstin ? <span className="bg-muted px-1.5 py-0.5 rounded text-xs">{gstin}</span> : <span className="text-muted-foreground">—</span>
+    },
+  },
+  gst_rate: {
+    name: "GST %",
+    code: "gst_rate",
+    classes: "text-right min-w-[60px]",
+    sortable: false,
+    formatValue: (transaction: Transaction) => {
+      const rate = (transaction.extra as any)?.gst_rate
+      return rate ? <span>{rate}%</span> : <span className="text-muted-foreground">—</span>
+    },
+  },
+  invoice_number: {
+    name: "Inv No.",
+    code: "invoice_number",
+    classes: "min-w-[80px]",
+    sortable: false,
+    formatValue: (transaction: Transaction) => {
+      const inv = (transaction.extra as any)?.invoice_number
+      return inv || <span className="text-muted-foreground">—</span>
+    },
+  },
+  hsn_sac_code: {
+    name: "HSN/SAC",
+    code: "hsn_sac_code",
+    classes: "font-mono text-xs",
+    sortable: false,
+    formatValue: (transaction: Transaction) => {
+      const code = (transaction.extra as any)?.hsn_sac_code
+      return code || <span className="text-muted-foreground">—</span>
+    },
+  },
 }
 
 const getFieldRenderer = (field: Field): FieldRenderer => {
