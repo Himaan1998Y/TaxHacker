@@ -56,7 +56,7 @@ export default function LandingPage() {
                 Get Started ✨
               </Link>
               <Link
-                href="mailto:me@vas3k.com"
+                href={`mailto:${config.app.supportEmail}`}
                 className="px-8 py-4 border-2 border-gradient-to-r from-pink-300 to-indigo-300 text-gray-800 font-bold rounded-full hover:bg-gradient-to-r hover:from-pink-50 hover:to-indigo-50 transition-all duration-300 hover:scale-105 bg-white/80"
               >
                 Contact Us 💌

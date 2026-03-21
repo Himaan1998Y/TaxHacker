@@ -109,7 +109,7 @@ export const getTimeSeriesStats = cache(
   async (
     userId: string,
     filters: TransactionFilters = {},
-    defaultCurrency: string = "EUR"
+    defaultCurrency: string = "INR"
   ): Promise<TimeSeriesData[]> => {
     const where: Prisma.TransactionWhereInput = { userId }
 
@@ -188,7 +188,7 @@ export const getDetailedTimeSeriesStats = cache(
   async (
     userId: string,
     filters: TransactionFilters = {},
-    defaultCurrency: string = "EUR"
+    defaultCurrency: string = "INR"
   ): Promise<DetailedTimeSeriesData[]> => {
     const where: Prisma.TransactionWhereInput = { userId }
 

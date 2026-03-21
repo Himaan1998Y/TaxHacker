@@ -15,7 +15,7 @@ export async function StatsWidget({ filters }: { filters: TransactionFilters }) 
   const user = await getCurrentUser()
   const projects = await getProjects(user.id)
   const settings = await getSettings(user.id)
-  const defaultCurrency = settings.default_currency || "EUR"
+  const defaultCurrency = settings.default_currency || "INR"
 
   const stats = await getDashboardStats(user.id, filters)
   const statsTimeSeries = await getDetailedTimeSeriesStats(user.id, filters, defaultCurrency)

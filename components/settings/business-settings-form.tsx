@@ -24,14 +24,14 @@ export default function BusinessSettingsForm({ user }: { user: User }) {
         <FormTextarea
           title="Business Address"
           name="businessAddress"
-          placeholder="Street, City, State, Zip Code, Country, Tax ID"
+          placeholder="Street, City, State, PIN Code"
           defaultValue={user.businessAddress ?? ""}
         />
 
         <FormTextarea
           title="Bank Details"
           name="businessBankDetails"
-          placeholder="Bank Name, Account Number, BIC, IBAN, details of payment, etc."
+          placeholder="Bank Name, Account No., IFSC Code, Branch"
           defaultValue={user.businessBankDetails ?? ""}
         />
 
