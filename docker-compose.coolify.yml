@@ -1,0 +1,63 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7331:7331"
+    environment:
+      - NODE_ENV=production
+      - PORT=7331
+      - SELF_HOSTED_MODE=true
+      - DISABLE_SIGNUP=true
+      - UPLOAD_PATH=/app/data/uploads
+      - DATABASE_URL=postgresql://taxhacker:taxhacker@taxhacker-db:5432/taxhacker
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_MODEL_NAME=${GOOGLE_MODEL_NAME:-gemini-2.5-flash}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL_NAME=${OPENAI_MODEL_NAME:-gpt-4o-mini}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL_NAME=${OPENROUTER_MODEL_NAME:-google/gemini-2.5-flash}
+    volumes:
+      - taxhacker-data:/app/data
+    restart: unless-stopped
+    depends_on:
+      taxhacker-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7331"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "local"
+      options:
+        max-size: "100M"
+        max-file: "3"
+
+  taxhacker-db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=taxhacker
+      - POSTGRES_PASSWORD=taxhacker
+      - POSTGRES_DB=taxhacker
+    volumes:
+      - taxhacker-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taxhacker -d taxhacker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "local"
+      options:
+        max-size: "50M"
+        max-file: "2"
+
+volumes:
+  taxhacker-data:
+  taxhacker-pgdata:
