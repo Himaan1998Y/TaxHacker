@@ -29,7 +29,7 @@ const env = envSchema.parse(process.env)
 const config = {
   app: {
     title: "TaxHacker India",
-    description: "AI-powered GST, TDS & Indian tax assistant",
+    description: "AI-powered GST, TDS & Indian tax assistant — GSTR-1, GSTR-3B reports, Tally export, invoice scanner for freelancers, MSMEs & CAs",
     version: process.env.npm_package_version || "0.0.1",
     baseURL: env.BASE_URL || `http://localhost:${env.PORT || "7331"}`,
     supportEmail: "support@taxhackerindia.in",

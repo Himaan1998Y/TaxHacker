@@ -128,6 +128,54 @@ export const EXPORT_AND_IMPORT_FIELD_MAP: Record<string, ExportImportFieldSettin
       }
     },
   },
+  // Indian GST/TDS extra fields — pass-through (no transform needed)
+  invoice_number: { code: "invoice_number", type: "string" },
+  gstin: { code: "gstin", type: "string" },
+  gst_rate: {
+    code: "gst_rate",
+    type: "number",
+    import: async (_userId: string, value: string) => {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    },
+  },
+  cgst: {
+    code: "cgst",
+    type: "number",
+    import: async (_userId: string, value: string) => {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    },
+  },
+  sgst: {
+    code: "sgst",
+    type: "number",
+    import: async (_userId: string, value: string) => {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    },
+  },
+  igst: {
+    code: "igst",
+    type: "number",
+    import: async (_userId: string, value: string) => {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    },
+  },
+  hsn_sac_code: { code: "hsn_sac_code", type: "string" },
+  place_of_supply: { code: "place_of_supply", type: "string" },
+  supply_type: { code: "supply_type", type: "string" },
+  pan_number: { code: "pan_number", type: "string" },
+  tds_section: { code: "tds_section", type: "string" },
+  tds_amount: {
+    code: "tds_amount",
+    type: "number",
+    import: async (_userId: string, value: string) => {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    },
+  },
 }
 
 export const importProject = async (userId: string, name: string) => {

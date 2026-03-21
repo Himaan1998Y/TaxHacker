@@ -8,6 +8,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -114,6 +115,37 @@ export function AppSidebar({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItemWithHighlight>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>GST Reports</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItemWithHighlight href="/apps/gstr1">
+                  <SidebarMenuButton asChild>
+                    <Link href="/apps/gstr1">
+                      <FileText />
+                      <span>GSTR-1</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItemWithHighlight>
+                <SidebarMenuItemWithHighlight href="/apps/gstr3b">
+                  <SidebarMenuButton asChild>
+                    <Link href="/apps/gstr3b">
+                      <FileText />
+                      <span>GSTR-3B</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItemWithHighlight>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
                 <SidebarMenuItemWithHighlight href="/settings">
                   <SidebarMenuButton asChild>
                     <Link href="/settings">
