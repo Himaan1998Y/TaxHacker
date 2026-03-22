@@ -33,10 +33,15 @@ export default async function SelfHostedWelcomePage() {
   }
 
   const defaultProvider = PROVIDERS[0].key
+  // Mask API keys — never send full keys to client HTML
+  const maskKey = (key: string | undefined) => {
+    if (!key || key.length < 8) return ""
+    return "****" + key.slice(-4)
+  }
   const defaultApiKeys: Record<string, string> = {
-    openai: config.ai.openaiApiKey ?? "",
-    google: config.ai.googleApiKey ?? "",
-    mistral: config.ai.mistralApiKey ?? "",
+    openai: maskKey(config.ai.openaiApiKey),
+    google: maskKey(config.ai.googleApiKey),
+    mistral: maskKey(config.ai.mistralApiKey),
   }
 
   return (

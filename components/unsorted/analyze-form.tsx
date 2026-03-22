@@ -178,7 +178,7 @@ export default function AnalyzeForm({
       setAnalyzeStep("Analyzing...")
       const results = await analyzeFileAction(file, settings, fields, categories, projects)
 
-      console.log("Analysis results:", results)
+      // Analysis complete
 
       if (!results.success) {
         setAnalyzeError(results.error ? results.error : "Something went wrong...")

@@ -31,12 +31,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
     // Read file
     const fileBuffer = await fs.readFile(fullFilePath)
 
-    // Return file with proper content type and encoded filename
+    // Validate MIME type — force safe content type for downloads
+    const safeMimeType = file.mimetype.startsWith("image/") || file.mimetype === "application/pdf"
+      ? file.mimetype
+      : "application/octet-stream"
+
     return new NextResponse(fileBuffer, {
       headers: {
-        "Content-Type": file.mimetype,
-          "Content-Disposition": `attachment; filename*=${encodeFilename(file.filename)}`,
-        },
+        "Content-Type": safeMimeType,
+        "Content-Disposition": `attachment; filename*=${encodeFilename(file.filename)}`,
+        "X-Content-Type-Options": "nosniff",
+      },
     })
   } catch (error) {
     console.error("Error serving file:", error)

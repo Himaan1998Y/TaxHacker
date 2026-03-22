@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/db"
+import { FILE_UPLOAD_PATH } from "@/lib/files"
 import { unlink } from "fs/promises"
 import path from "path"
 import { cache } from "react"
@@ -74,9 +75,16 @@ export const deleteFile = async (id: string, userId: string) => {
   }
 
   try {
-    await unlink(path.resolve(path.normalize(file.path)))
+    // Reconstruct safe path instead of trusting file.path directly
+    const resolvedPath = path.resolve(path.normalize(file.path))
+    const uploadsBase = path.resolve(FILE_UPLOAD_PATH)
+    if (!resolvedPath.startsWith(uploadsBase)) {
+      console.error("Path traversal blocked on file deletion:", file.id)
+      return
+    }
+    await unlink(resolvedPath)
   } catch (error) {
-    console.error("Error deleting file:", error)
+    // File may already be deleted — not critical
   }
 
   return await prisma.file.delete({

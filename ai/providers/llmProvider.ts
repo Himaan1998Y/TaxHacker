@@ -99,18 +99,24 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
 export async function requestLLM(settings: LLMSettings, req: LLMRequest): Promise<LLMResponse> {
   for (const config of settings.providers) {
     if (!config.apiKey || !config.model) {
-      console.info("Skipping provider:", config.provider)
       continue
     }
-    console.info("Use provider:", config.provider)
 
+    // First attempt
     const response = await requestLLMUnified(config, req)
-
     if (!response.error) {
       return response
-    } else {
-      console.error(response.error)
     }
+
+    // Single retry on failure (structured output can be flaky)
+    console.info(`${config.provider} failed, retrying once...`)
+    const retry = await requestLLMUnified(config, req)
+    if (!retry.error) {
+      return retry
+    }
+
+    // Move to next provider
+    console.info(`${config.provider} failed after retry, trying next provider`)
   }
 
   return {

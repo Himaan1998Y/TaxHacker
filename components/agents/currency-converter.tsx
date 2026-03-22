@@ -11,7 +11,7 @@ async function getCurrencyRate(currencyCodeFrom: string, currencyCodeTo: string,
 
   if (!response.ok) {
     const errorData = await response.json()
-    console.log("Currency API error:", errorData.error)
+    // Currency API returned error
     throw new Error(errorData.error || "Failed to fetch currency rate")
   }
 

@@ -54,6 +54,9 @@ export async function saveTransactionsAction(
     for (const row of rows) {
       const transactionData: Record<string, unknown> = {}
       for (const [fieldCode, value] of Object.entries(row)) {
+        // Only allow known field codes — reject arbitrary keys
+        if (!(fieldCode in EXPORT_AND_IMPORT_FIELD_MAP)) continue
+
         const fieldDef = EXPORT_AND_IMPORT_FIELD_MAP[fieldCode]
         if (fieldDef?.import) {
           transactionData[fieldCode] = await fieldDef.import(user.id, value as string)

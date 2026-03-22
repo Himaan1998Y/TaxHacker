@@ -198,7 +198,7 @@ export function InvoiceGenerator({
 
       const result = await saveInvoiceAsTransactionAction(formData)
       if (result.success && result.data?.id) {
-        console.log("SUCCESS! REDIRECTING TO TRANSACTION", result.data?.id)
+        // Redirect to saved transaction
         startTransition(() => {
           router.push(`/transactions/${result.data?.id}`)
         })

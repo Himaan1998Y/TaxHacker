@@ -70,7 +70,7 @@ export async function analyzeFileAction(
 
   const results = await analyzeTransaction(prompt, schema, attachments, file.id, user.id)
 
-  console.log("Analysis results:", results)
+  // Analysis complete
 
   if (results.data?.tokensUsed && results.data.tokensUsed > 0) {
     await updateUser(user.id, { aiBalance: { decrement: 1 } })

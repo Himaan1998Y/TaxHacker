@@ -69,6 +69,11 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Create directory for uploads
 RUN mkdir -p /app/data
 
+# Run as non-root user for security
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+RUN chown -R nextjs:nodejs /app/data /app/upload
+USER nextjs
+
 EXPOSE 7331
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
