@@ -16,6 +16,7 @@ const envSchema = z.object({
     .string()
     .min(16, "Auth secret must be at least 16 characters")
     .default("please-set-your-key-here"),
+  SELF_HOSTED_PASSWORD: z.string().optional(),
   DISABLE_SIGNUP: z.enum(["true", "false"]).default("false"),
   RESEND_API_KEY: z.string().default("please-set-your-resend-api-key-here"),
   RESEND_FROM_EMAIL: z.string().default("TaxHacker <user@localhost>"),
@@ -51,6 +52,7 @@ const config = {
   },
   selfHosted: {
     isEnabled: env.SELF_HOSTED_MODE === "true",
+    password: env.SELF_HOSTED_PASSWORD,
     redirectUrl: "/self-hosted/redirect",
     welcomeUrl: "/self-hosted",
   },
