@@ -35,8 +35,8 @@ export async function analyzeTransaction(
     const result = response.output
     const tokensUsed = response.tokensUsed || 0
 
-    console.log("LLM response:", result)
-    console.log("LLM tokens used:", tokensUsed)
+    // Token usage only — never log actual response content (contains sensitive invoice data)
+    console.info("LLM analysis complete, tokens used:", tokensUsed)
 
     await updateFile(fileId, userId, { cachedParseResult: result })
 

@@ -194,6 +194,9 @@ export function classifyTransaction(
   }
 
   // No GSTIN — determine B2CL vs B2CS
+  if (!businessStateCode && tx.total > B2CL_THRESHOLD) {
+    warnings.push("Business state code not set in Settings — cannot determine if this is B2CL (inter-state). Set it in Settings → Tax Identity.")
+  }
   const isInterState = determineInterState(tx, businessStateCode)
 
   if (isInterState && tx.total > B2CL_THRESHOLD) {

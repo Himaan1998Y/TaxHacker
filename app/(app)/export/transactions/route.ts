@@ -17,6 +17,14 @@ const TRANSACTIONS_CHUNK_SIZE = 300
 const FILES_CHUNK_SIZE = 50
 const PROGRESS_UPDATE_INTERVAL_MS = 2000 // 2 seconds
 
+// Prevent CSV formula injection — Excel/Sheets execute formulas starting with these chars
+function sanitizeCSVValue(value: unknown): unknown {
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(value)) {
+    return "'" + value
+  }
+  return value
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const filters = Object.fromEntries(url.searchParams.entries()) as ExportFilters
@@ -41,9 +49,7 @@ export async function GET(request: Request) {
     // Process transactions in chunks to avoid memory issues
     for (let i = 0; i < transactions.length; i += TRANSACTIONS_CHUNK_SIZE) {
       const chunk = transactions.slice(i, i + TRANSACTIONS_CHUNK_SIZE)
-      console.log(
-        `Processing transactions ${i + 1}-${Math.min(i + TRANSACTIONS_CHUNK_SIZE, transactions.length)} of ${transactions.length}`
-      )
+      // Progress tracking — no sensitive data logged
 
       for (const transaction of chunk) {
         const row: Record<string, unknown> = {}
@@ -62,7 +68,12 @@ export async function GET(request: Request) {
             row[field.code] = value
           }
         }
-        csvStream.write(row)
+        // Sanitize all string values against formula injection before writing
+        const sanitizedRow: Record<string, unknown> = {}
+        for (const [key, val] of Object.entries(row)) {
+          sanitizedRow[key] = sanitizeCSVValue(val)
+        }
+        csvStream.write(sanitizedRow)
       }
     }
     csvStream.end()
@@ -111,13 +122,11 @@ export async function GET(request: Request) {
       await updateProgress(user.id, progressId, { total: totalFilesToProcess })
     }
 
-    console.log(`Starting to process ${totalFilesToProcess} files in total`)
+    // Begin file processing
 
     for (let i = 0; i < transactions.length; i += FILES_CHUNK_SIZE) {
       const chunk = transactions.slice(i, i + FILES_CHUNK_SIZE)
-      console.log(
-        `Processing files for transactions ${i + 1}-${Math.min(i + FILES_CHUNK_SIZE, transactions.length)} of ${transactions.length}`
-      )
+      // Process files chunk
 
       for (const transaction of chunk) {
         const transactionFiles = await getFilesByTransactionId(transaction.id, user.id)
@@ -134,9 +143,7 @@ export async function GET(request: Request) {
         for (const file of transactionFiles) {
           const fullFilePath = fullPathForFile(user, file)
           if (await fileExists(fullFilePath)) {
-            console.log(
-              `Processing file ${++totalFilesProcessed}/${totalFilesToProcess}: ${file.filename} for transaction ${transaction.id}`
-            )
+            totalFilesProcessed++
             const fileData = await fs.readFile(fullFilePath)
             const fileExtension = path.extname(fullFilePath)
             transactionFolder.file(
@@ -153,7 +160,7 @@ export async function GET(request: Request) {
               lastProgressUpdate = now
             }
           } else {
-            console.log(`Skipping missing file: ${file.filename} for transaction ${transaction.id}`)
+            // Skip missing file
           }
         }
       }
@@ -164,7 +171,7 @@ export async function GET(request: Request) {
       await updateProgress(user.id, progressId, { current: totalFilesToProcess })
     }
 
-    console.log(`Finished processing all ${totalFilesProcessed} files`)
+    // Export complete
 
     // Generate zip with progress tracking
     const zipContent = await zip.generateAsync({

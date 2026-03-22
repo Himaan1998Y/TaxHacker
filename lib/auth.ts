@@ -34,11 +34,11 @@ export const auth = betterAuth({
   },
   session: {
     strategy: "jwt",
-    expiresIn: 180 * 24 * 60 * 60, // 365 days
+    expiresIn: 30 * 24 * 60 * 60, // 30 days
     updateAge: 24 * 60 * 60, // 24 hours
     cookieCache: {
       enabled: true,
-      maxAge: 365 * 24 * 60 * 60, // 365 days
+      maxAge: 30 * 24 * 60 * 60, // 30 days
     },
   },
   advanced: {

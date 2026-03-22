@@ -26,7 +26,7 @@ export const fieldsToJsonSchema = (fields: Field[]) => {
         },
       },
     },
-    required: [...Object.keys(schemaProperties), "items"],
+    required: [],
     additionalProperties: false,
   }
 

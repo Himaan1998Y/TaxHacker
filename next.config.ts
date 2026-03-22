@@ -2,6 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs"
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   eslint: {
     ignoreDuringBuilds: true, // TODO: make me linting again
   },

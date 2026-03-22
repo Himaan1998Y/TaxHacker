@@ -47,17 +47,20 @@ WORKDIR /app
 # Create upload directory and set permissions
 RUN mkdir -p /app/upload
 
-# Copy built assets from builder
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/.next ./.next
+# Copy built standalone output (much smaller than full node_modules)
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/app ./app
-COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Copy node_modules for prisma CLI (needed for migrate deploy in entrypoint)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 # Rebuild sharp for production OS (ensures native bindings match)
-RUN npm rebuild sharp
+RUN npm rebuild sharp 2>/dev/null || true
 
 # Copy and set up entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
@@ -68,5 +71,8 @@ RUN mkdir -p /app/data
 
 EXPOSE 7331
 
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:7331/ || exit 1
+
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

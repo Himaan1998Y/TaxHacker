@@ -176,6 +176,30 @@ export const EXPORT_AND_IMPORT_FIELD_MAP: Record<string, ExportImportFieldSettin
       return isNaN(num) ? 0 : num
     },
   },
+  tds_rate: {
+    code: "tds_rate",
+    type: "number",
+    import: async (_userId: string, value: string) => {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    },
+  },
+  cess: {
+    code: "cess",
+    type: "number",
+    import: async (_userId: string, value: string) => {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    },
+  },
+  reverse_charge: {
+    code: "reverse_charge",
+    type: "string",
+    import: async (_userId: string, value: string) => {
+      return ["yes", "y", "true", "1"].includes((value || "").toLowerCase()) ? "Yes" : "No"
+    },
+  },
+  irn_number: { code: "irn_number", type: "string" },
 }
 
 export const importProject = async (userId: string, name: string) => {

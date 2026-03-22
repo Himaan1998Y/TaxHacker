@@ -83,9 +83,12 @@ export const getTransactions = cache(
       }
 
       if (filters.ordering) {
+        const ALLOWED_SORT_FIELDS = ["issuedAt", "total", "name", "type", "merchant", "createdAt", "updatedAt"]
         const isDesc = filters.ordering.startsWith("-")
         const field = isDesc ? filters.ordering.slice(1) : filters.ordering
-        orderBy = { [field]: isDesc ? "desc" : "asc" }
+        if (ALLOWED_SORT_FIELDS.includes(field)) {
+          orderBy = { [field]: isDesc ? "desc" : "asc" }
+        }
       }
     }
 
