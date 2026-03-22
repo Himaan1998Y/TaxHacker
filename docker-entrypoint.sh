@@ -12,10 +12,10 @@ until psql "$SERVER_URL" -c '\q' >/dev/null 2>&1; do
 done
 echo "PostgreSQL server is ready!"
 
-# Run database migrations
+# Run database migrations (use direct node path — npx not available in standalone)
 echo "Running database migrations..."
-npx prisma generate
-npx prisma migrate deploy
+node node_modules/prisma/build/index.js generate
+node node_modules/prisma/build/index.js migrate deploy
 
 # Start the application
 echo "Starting the application..."

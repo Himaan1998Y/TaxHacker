@@ -31,9 +31,10 @@ RUN npm run build
 # Production stage
 FROM base
 
-# Install required system dependencies
+# Install required system dependencies (including curl for healthcheck)
 RUN apt-get update && apt-get install -y \
     ca-certificates \
+    curl \
     ghostscript \
     graphicsmagick \
     openssl \
@@ -44,8 +45,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Create upload directory and set permissions
-RUN mkdir -p /app/upload
+# Create upload directory
+RUN mkdir -p /app/upload /app/data
 
 # Copy built standalone output (much smaller than full node_modules)
 COPY --from=builder /app/public ./public
@@ -54,20 +55,18 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy node_modules for prisma CLI (needed for migrate deploy in entrypoint)
+# Copy prisma CLI + engine (needed for migrate deploy in entrypoint)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Rebuild sharp for production OS (ensures native bindings match)
-RUN npm rebuild sharp 2>/dev/null || true
+# Copy sharp native bindings from builder (already compiled for linux)
+COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
+COPY --from=builder /app/node_modules/@img ./node_modules/@img
 
 # Copy and set up entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Create directory for uploads
-RUN mkdir -p /app/data
 
 # Run as non-root user for security
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
@@ -76,8 +75,8 @@ USER nextjs
 
 EXPOSE 7331
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:7331/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -sf http://localhost:7331/ || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]
