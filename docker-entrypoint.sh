@@ -14,7 +14,6 @@ echo "PostgreSQL server is ready!"
 
 # Run database migrations (use direct node path — npx not available in standalone)
 echo "Running database migrations..."
-node node_modules/prisma/build/index.js generate
 node node_modules/prisma/build/index.js migrate deploy
 
 # Start the application
