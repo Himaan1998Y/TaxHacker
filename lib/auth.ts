@@ -17,8 +17,8 @@ export type UserProfile = {
   email: string
   avatar?: string
   membershipPlan: string
-  storageUsed: number | bigint
-  storageLimit: number | bigint
+  storageUsed: number
+  storageLimit: number
   aiBalance: number
 }
 

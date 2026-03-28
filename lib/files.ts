@@ -89,5 +89,5 @@ export function isEnoughStorageToUploadFile(user: User, fileSize: number) {
   if (config.selfHosted.isEnabled || user.storageLimit < 0) {
     return true
   }
-  return user.storageUsed + fileSize <= user.storageLimit
+  return Number(user.storageUsed) + fileSize <= Number(user.storageLimit)
 }

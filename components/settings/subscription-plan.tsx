@@ -27,8 +27,8 @@ export function SubscriptionPlan({ user }: { user: User }) {
             <div className="flex items-center gap-2">
               <HardDrive className="h-4 w-4" />
               <span>
-                <strong className="font-semibold">Storage:</strong> {formatBytes(user.storageUsed)} /{" "}
-                {user.storageLimit > 0 ? formatBytes(user.storageLimit) : "Unlimited"}
+                <strong className="font-semibold">Storage:</strong> {formatBytes(Number(user.storageUsed))} /{" "}
+                {user.storageLimit > 0 ? formatBytes(Number(user.storageLimit)) : "Unlimited"}
               </span>
             </div>
             <div className="flex items-center gap-2">
