@@ -76,7 +76,7 @@ USER nextjs
 EXPOSE 7331
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -sf http://localhost:7331/ || exit 1
+  CMD curl -sf http://localhost:7331/api/health || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]

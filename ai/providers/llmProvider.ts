@@ -109,14 +109,14 @@ export async function requestLLM(settings: LLMSettings, req: LLMRequest): Promis
     }
 
     // Single retry on failure (structured output can be flaky)
-    console.info(`${config.provider} failed, retrying once...`)
+    console.warn(`${config.provider} failed: ${response.error}. Retrying once...`)
     const retry = await requestLLMUnified(config, req)
     if (!retry.error) {
       return retry
     }
 
     // Move to next provider
-    console.info(`${config.provider} failed after retry, trying next provider`)
+    console.warn(`${config.provider} failed after retry: ${retry.error}. Trying next provider...`)
   }
 
   return {

@@ -16,7 +16,8 @@ export async function selfHostedGetStartedAction(formData: FormData) {
   const apiKeys = [
     "openai_api_key",
     "google_api_key",
-    "mistral_api_key"
+    "mistral_api_key",
+    "openrouter_api_key"
   ]
 
   for (const key of apiKeys) {
@@ -26,6 +27,19 @@ export async function selfHostedGetStartedAction(formData: FormData) {
     }
   }
 
+  // Save model names if provided
+  const modelNames = [
+    "openai_model_name",
+    "google_model_name",
+    "mistral_model_name",
+    "openrouter_model_name"
+  ]
+  for (const key of modelNames) {
+    const value = formData.get(key)
+    if (value) {
+      await updateSettings(user.id, key, value as string)
+    }
+  }
 
   const defaultCurrency = formData.get("default_currency")
   if (defaultCurrency) {
