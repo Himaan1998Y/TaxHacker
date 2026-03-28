@@ -28,6 +28,9 @@ psql "$DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null && 
   echo "pgvector enabled successfully." || \
   echo "pgvector not available (optional — embeddings will use fallback)."
 
+# Ensure upload directories exist and are writable
+mkdir -p /app/data/uploads 2>/dev/null || true
+
 # Start the application
 echo "Starting the application..."
 exec "$@"
