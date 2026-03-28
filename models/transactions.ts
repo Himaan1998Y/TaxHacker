@@ -1,8 +1,16 @@
 import { prisma } from "@/lib/db"
+import { embedTransaction } from "@/lib/embeddings"
 import { Field, Prisma, Transaction } from "@/prisma/client"
 import { cache } from "react"
 import { getFields } from "./fields"
 import { deleteFile } from "./files"
+
+/** Fire-and-forget embedding — never blocks transaction operations */
+function embedTransactionAsync(tx: Transaction) {
+  embedTransaction(tx).catch((err) =>
+    console.warn("Background embedding failed:", err)
+  )
+}
 
 export type TransactionData = {
   name?: string | null
@@ -138,7 +146,7 @@ export const getTransactionsByFileId = cache(async (fileId: string, userId: stri
 export const createTransaction = async (userId: string, data: TransactionData): Promise<Transaction> => {
   const { standard, extra } = await splitTransactionDataExtraFields(data, userId)
 
-  return await prisma.transaction.create({
+  const transaction = await prisma.transaction.create({
     data: {
       ...standard,
       extra: extra,
@@ -146,12 +154,17 @@ export const createTransaction = async (userId: string, data: TransactionData): 
       userId,
     },
   })
+
+  // Generate embedding async (non-blocking, best-effort)
+  embedTransactionAsync(transaction)
+
+  return transaction
 }
 
 export const updateTransaction = async (id: string, userId: string, data: TransactionData): Promise<Transaction> => {
   const { standard, extra } = await splitTransactionDataExtraFields(data, userId)
 
-  return await prisma.transaction.update({
+  const transaction = await prisma.transaction.update({
     where: { id, userId },
     data: {
       ...standard,
@@ -159,6 +172,11 @@ export const updateTransaction = async (id: string, userId: string, data: Transa
       items: data.items ? (data.items as Prisma.InputJsonValue) : [],
     },
   })
+
+  // Re-embed after update (non-blocking)
+  embedTransactionAsync(transaction)
+
+  return transaction
 }
 
 export const updateTransactionFiles = async (id: string, userId: string, files: string[]): Promise<Transaction> => {
