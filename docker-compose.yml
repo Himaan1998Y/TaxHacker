@@ -20,7 +20,7 @@ services:
         max-file: "3"
 
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
