@@ -18,12 +18,13 @@ export default function SelfHostedLoginPage() {
       const res = await fetch("/api/self-hosted-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ password }),
       })
 
       if (res.ok) {
-        router.push("/dashboard")
-        router.refresh()
+        // Full page redirect ensures cookie is sent with the request
+        window.location.href = "/dashboard"
       } else {
         setError("Wrong password")
       }
