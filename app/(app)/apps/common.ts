@@ -1,5 +1,6 @@
-import fs from "fs/promises"
-import path from "path"
+import { manifest as invoicesManifest } from "./invoices/manifest"
+import { manifest as gstr1Manifest } from "./gstr1/manifest"
+import { manifest as gstr3bManifest } from "./gstr3b/manifest"
 
 export type AppManifest = {
   name: string
@@ -7,21 +8,13 @@ export type AppManifest = {
   icon: string
 }
 
+// Static registry — dynamic fs.readdir breaks in Next.js standalone builds
+const APP_REGISTRY: { id: string; manifest: AppManifest }[] = [
+  { id: "invoices", manifest: invoicesManifest },
+  { id: "gstr1", manifest: gstr1Manifest },
+  { id: "gstr3b", manifest: gstr3bManifest },
+]
+
 export async function getApps(): Promise<{ id: string; manifest: AppManifest }[]> {
-  const appsDir = path.join(process.cwd(), "app/(app)/apps")
-  const items = await fs.readdir(appsDir, { withFileTypes: true })
-
-  const apps = await Promise.all(
-    items
-      .filter((item) => item.isDirectory() && item.name !== "apps")
-      .map(async (item) => {
-        const manifestModule = await import(`./${item.name}/manifest`)
-        return {
-          id: item.name,
-          manifest: manifestModule.manifest as AppManifest,
-        }
-      })
-  )
-
-  return apps
+  return APP_REGISTRY
 }
