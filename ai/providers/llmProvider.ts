@@ -43,7 +43,7 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
         apiKey: config.apiKey,
         model: config.model,
         temperature: temperature,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 65536,
       })
     } else if (config.provider === "mistral") {
       model = new ChatMistralAI({
@@ -68,8 +68,6 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
       }
     }
 
-    const structuredModel = model.withStructuredOutput(req.schema, { name: "transaction" })
-
     let message_content: any = [{ type: "text", text: req.prompt }]
     if (req.attachments && req.attachments.length > 0) {
       const images = req.attachments.map((att) => ({
@@ -82,11 +80,28 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
     }
     const messages: BaseMessage[] = [new HumanMessage({ content: message_content })]
 
-    const response = await structuredModel.invoke(messages)
-
-    return {
-      output: response,
-      provider: config.provider,
+    // Try structured output first
+    try {
+      const structuredModel = model.withStructuredOutput(req.schema, { name: "transaction" })
+      const response = await structuredModel.invoke(messages)
+      return {
+        output: response,
+        provider: config.provider,
+      }
+    } catch (structuredError: any) {
+      // Structured output failed (truncated JSON, etc.) — fall back to raw text + manual parse
+      console.warn(`${config.provider} structured output failed: ${structuredError.message}. Trying raw text fallback...`)
+      const rawResponse = await model.invoke(messages)
+      const text = typeof rawResponse.content === "string" ? rawResponse.content : JSON.stringify(rawResponse.content)
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        return {
+          output: parsed,
+          provider: config.provider,
+        }
+      }
+      throw structuredError
     }
   } catch (error: any) {
     return {
