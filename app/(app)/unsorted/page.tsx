@@ -39,9 +39,10 @@ export default async function UnsortedPage() {
       </header>
 
       {config.selfHosted.isEnabled &&
-        !settings.openai_api_key &&
-        !settings.google_api_key &&
-        !settings.mistral_api_key && (
+        !settings.openai_api_key && !config.ai.openaiApiKey &&
+        !settings.google_api_key && !config.ai.googleApiKey &&
+        !settings.mistral_api_key && !config.ai.mistralApiKey &&
+        !settings.openrouter_api_key && !config.ai.openrouterApiKey && (
           <Alert>
             <Settings className="h-4 w-4 mt-2" />
             <div className="flex flex-row justify-between pt-2">
