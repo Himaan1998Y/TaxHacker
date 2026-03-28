@@ -13,11 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 })
     }
 
-    // Set auth cookie — httpOnly, secure, 30 days
+    // Set auth cookie — httpOnly, 30 days
+    // Detect HTTPS via proxy header (Coolify/Traefik sets x-forwarded-proto)
+    const isSecure = request.headers.get("x-forwarded-proto") === "https"
+      || request.url.startsWith("https")
     const response = NextResponse.json({ success: true })
     response.cookies.set("taxhacker_sh_auth", config.selfHosted.password, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60, // 30 days
       path: "/",
