@@ -1,4 +1,5 @@
 import { default as globalConfig } from "@/lib/config"
+import { hashSelfHostedToken } from "@/lib/self-hosted-auth"
 import { rateLimit } from "@/lib/rate-limit"
 import { getSessionCookie } from "better-auth/cookies"
 import { NextRequest, NextResponse } from "next/server"
@@ -33,7 +34,8 @@ export default async function middleware(request: NextRequest) {
     // If a password is configured, require it via cookie
     if (globalConfig.selfHosted.password) {
       const authCookie = request.cookies.get("taxhacker_sh_auth")?.value
-      if (authCookie !== globalConfig.selfHosted.password) {
+      const expectedToken = hashSelfHostedToken(globalConfig.selfHosted.password)
+      if (authCookie !== expectedToken) {
         // Allow the password verification endpoint and static assets through
         if (pathname === "/api/self-hosted-auth" || pathname.startsWith("/_next/") || pathname.startsWith("/logo/")) {
           return NextResponse.next()

@@ -24,7 +24,7 @@ export function transactionToText(tx: {
   if (tx.merchant) parts.push(`merchant: ${tx.merchant}`)
   if (tx.description) parts.push(tx.description)
   if (tx.type) parts.push(`type: ${tx.type}`)
-  if (tx.total != null) parts.push(`amount: ${(tx.total / 100).toFixed(2)}`)
+  if (tx.total != null) parts.push(`amount: ${tx.total.toFixed(2)}`)
   if (tx.categoryCode) parts.push(`category: ${tx.categoryCode}`)
   if (tx.note) parts.push(tx.note)
 

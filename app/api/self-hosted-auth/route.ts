@@ -1,4 +1,5 @@
 import config from "@/lib/config"
+import { hashSelfHostedToken } from "@/lib/self-hosted-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
@@ -14,11 +15,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Set auth cookie — httpOnly, 30 days
-    // Detect HTTPS via proxy header (Coolify/Traefik sets x-forwarded-proto)
+    // Cookie stores a hash, never the raw password
     const isSecure = request.headers.get("x-forwarded-proto") === "https"
       || request.url.startsWith("https")
     const response = NextResponse.json({ success: true })
-    response.cookies.set("taxhacker_sh_auth", config.selfHosted.password, {
+    response.cookies.set("taxhacker_sh_auth", hashSelfHostedToken(password), {
       httpOnly: true,
       secure: isSecure,
       sameSite: "lax",

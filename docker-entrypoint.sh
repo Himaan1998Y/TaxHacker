@@ -12,10 +12,6 @@ until psql "$SERVER_URL" -c '\q' >/dev/null 2>&1; do
 done
 echo "PostgreSQL server is ready!"
 
-# Resolve any previously failed migrations before deploying
-echo "Checking for failed migrations..."
-node node_modules/prisma/build/index.js migrate resolve --rolled-back 20260328000000_add_pgvector_embeddings 2>/dev/null || true
-
 # Run database migrations (use direct node path — npx not available in standalone)
 echo "Running database migrations..."
 node node_modules/prisma/build/index.js migrate deploy

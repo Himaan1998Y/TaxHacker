@@ -27,6 +27,10 @@ const envSchema = z.object({
 
 const env = envSchema.parse(process.env)
 
+if (process.env.NODE_ENV === "production" && env.BETTER_AUTH_SECRET === "please-set-your-key-here") {
+  console.warn("WARNING: Using default BETTER_AUTH_SECRET in production. Set a unique secret via environment variable.")
+}
+
 const config = {
   app: {
     title: "TaxHacker India",
