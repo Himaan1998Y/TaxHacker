@@ -1,15 +1,14 @@
 import { prisma } from "@/lib/db"
-import { embedTransaction } from "@/lib/embeddings"
 import { Field, Prisma, Transaction } from "@/prisma/client"
 import { cache } from "react"
 import { getFields } from "./fields"
 import { deleteFile } from "./files"
 
-/** Fire-and-forget embedding — never blocks transaction operations */
+/** Fire-and-forget embedding — lazy import so it never breaks transaction operations */
 function embedTransactionAsync(tx: Transaction) {
-  embedTransaction(tx).catch((err) =>
-    console.warn("Background embedding failed:", err)
-  )
+  import("@/lib/embeddings")
+    .then(({ embedTransaction }) => embedTransaction(tx))
+    .catch((err) => console.warn("Background embedding skipped:", err))
 }
 
 export type TransactionData = {
