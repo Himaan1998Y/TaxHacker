@@ -27,27 +27,55 @@ IMPORTANT RULES:
 - Indian phone numbers start with +91 or 0, PAN follows ABCDE1234F pattern
 - HSN codes are typically 4-8 digit numeric codes, SAC codes are 6-digit starting with 99
 - Dates may appear in DD/MM/YYYY or DD-MMM-YYYY format — always return in YYYY-MM-DD format
-- Classify supply_type as: "B2B" if buyer GSTIN is present, "B2CS" if total < 250000 without buyer GSTIN, "B2CL" if total >= 250000 without buyer GSTIN, "Export" if foreign buyer, "Nil" if no GST charged`
+- Classify supply_type as: "B2B" if buyer GSTIN is present, "B2CS" if total < 250000 without buyer GSTIN, "B2CL" if total >= 250000 without buyer GSTIN, "Export" if foreign buyer, "Nil" if no GST charged
+- For projectCode: classify as "personal" if the expense is clearly personal (grocery, restaurant meals, medical, personal insurance, household items). Classify as "business" if it's a business expense (vendor payments, office supplies, professional services, rent, inventory)
+- For categoryCode: be specific! Don't use "miscellaneous" if a better category fits. Restaurant/food delivery = food_beverages, petrol/diesel = vehicle_expenses, electricity/water = utilities, courier/shipping = freight_shipping, software/hosting = subscription_software`
 
-export const DEFAULT_PROMPT_ANALYSE_BANK_STATEMENT = `You are an Indian bank statement parser. Extract each transaction row from this bank statement as separate items.
+export const DEFAULT_PROMPT_ANALYSE_BANK_STATEMENT = `You are an expert Indian bank statement parser with deep knowledge of Indian banking transaction formats. Extract each transaction row from this bank statement as separate items.
 
 For each transaction, extract:
 {fields}
 
-Return ALL transactions as items in the "items" array. Each item should have: name (narration/description), total (amount), type (expense if debit, income if credit), issuedAt (date in YYYY-MM-DD format), merchant (extracted from narration if possible).
+Return ALL transactions as items in the "items" array. Each item should have: name, total, type, issuedAt, merchant, categoryCode, projectCode.
+
+UPI NARRATION PARSING:
+- "UPI/412845672/PAYING TO/NAME/BANK" → merchant = NAME
+- "UPI-MERCHANT NAME-UPIID@BANK-IFSC-REFNO" → merchant = MERCHANT NAME
+- "BIL/BPAY/000012345/BHARTI AIRTEL" → merchant = BHARTI AIRTEL (communication)
+- "NEFT/N123456/COMPANY NAME/IFSC" → merchant = COMPANY NAME
+- "IMPS/123456/PERSON NAME/IFSC" → merchant = PERSON NAME
+- "EMI/BANK/LOANID/EQUATED MONTHLY" → merchant = BANK (loan_emi)
+- "ATM/CASH WDL/LOCATION" → merchant = ATM Withdrawal (bank_charges)
+- "NWD" or "CASH WITHDRAWAL" → merchant = Cash Withdrawal (bank_charges)
+- "INT.PAID" or "INTEREST" → merchant = Bank Interest (interest_income)
+
+AUTO-CATEGORIZATION RULES:
+- Swiggy, Zomato, restaurant, dhaba, bakery, sweet shop, misthan → food_beverages + personal
+- Petrol, diesel, fuel, HP, IOCL, BPCL, Shell, Fastag, toll → vehicle_expenses + business
+- BigBasket, Blinkit, DMart, grocery, kirana, super bazaar, departmental → food_beverages + personal
+- Airtel, Jio, Vi, broadband, internet, BSNL → communication + business
+- Electricity, water board, gas, municipal, nagar nigam → utilities + business
+- Uber, Ola, Rapido, IRCTC, railways, MakeMyTrip → travel_conveyance + business
+- Amazon, Flipkart, Myntra, Meesho → office_supplies + business
+- LIC, insurance, HDFC Life, ICICI Pru → insurance + personal
+- Apollo, pharmacy, hospital, doctor, diagnostic, 1mg → medical + personal
+- Google, AWS, Microsoft, Adobe, Notion, hosting → subscription_software + business
+- Delhivery, BlueDart, DTDC, courier, India Post → freight_shipping + business
+- ATM, cash withdrawal, bank charges, annual fee → bank_charges + business
+- EMI, loan, NBFC → loan_emi + business
+- Salary, employer name, monthly consistent credit → salary_wages + business (type: income)
 
 IMPORTANT RULES:
-- This is an Indian bank statement (SBI, HDFC, ICICI, Kotak, Axis, PNB, or similar)
+- This is an Indian bank statement (SBI, HDFC, ICICI, Kotak, Axis, PNB, YES Bank, or similar)
 - Extract EVERY transaction row — do not skip any
-- Narration field contains UPI references (UPI/XXXXX/payee-name/bank), NEFT (NEFT/XXXXX/sender), RTGS, IMPS, cheque numbers
-- Debit amount = expense, Credit amount = income
-- Do NOT include opening balance, closing balance, or summary rows as transactions
-- Dates may appear as DD-MM-YYYY, DD/MM/YYYY, or DD-MMM-YYYY — always return as YYYY-MM-DD
-- Extract the payee/payer name from the narration as merchant
-- If UPI reference present, extract the UPI ID or name as merchant
-- Running balance column should be ignored (it's not a transaction)
-- Some statements have separate Debit and Credit columns — use the non-zero one to determine amount and type
-- Return amounts as decimal numbers (e.g., 15000.00), NOT in paise`
+- Debit = expense, Credit = income
+- Do NOT include opening/closing balance or summary rows
+- Dates: DD-MM-YYYY or DD/MM/YYYY or DD-MMM-YYYY → return as YYYY-MM-DD
+- Running balance column = ignore (not a transaction)
+- Separate Debit/Credit columns → use non-zero one for amount and type
+- Amounts as decimal (15000.00), NOT paise
+- NEVER use "miscellaneous" if a specific category fits
+- Self-transfers (NEFT/IMPS to own name or own account) → still extract but note it`
 
 export const DEFAULT_SETTINGS = [
   {
@@ -134,6 +162,19 @@ export const DEFAULT_CATEGORIES = [
   { code: "bank_charges", name: "Bank Charges", color: "#d40e70", llm_prompt: "bank charges, payment gateway fees, credit card charges, transaction fees" },
   { code: "government_fees", name: "Government Fees & Taxes", color: "#121216", llm_prompt: "stamp duty, property tax, GST payment, TDS payment, advance tax, challan, government fees" },
   { code: "miscellaneous", name: "Miscellaneous", color: "#1e202b", llm_prompt: "other, miscellaneous, uncategorized expenses" },
+
+  // New categories for comprehensive Indian SME coverage
+  { code: "food_beverages", name: "Food & Beverages", color: "#e67e22", llm_prompt: "meals, restaurant bills, tea/coffee, snacks, tiffin, canteen, zomato, swiggy, food delivery, dhaba, bakery, sweets" },
+  { code: "vehicle_expenses", name: "Vehicle Expenses", color: "#2c3e50", llm_prompt: "fuel, petrol, diesel, car service, vehicle repairs, registration, road tax, fastag recharge, car wash, parking, toll" },
+  { code: "utilities", name: "Utilities", color: "#16a085", llm_prompt: "electricity bill, water bill, gas connection, municipal charges, property tax, sewage" },
+  { code: "marketing_advertising", name: "Marketing & Advertising", color: "#e74c3c", llm_prompt: "Google Ads, Facebook/Meta Ads, newspaper ads, pamphlets, hoardings, digital marketing, SEO services, social media promotion, influencer" },
+  { code: "subscription_software", name: "Subscriptions & Software", color: "#3498db", llm_prompt: "SaaS subscriptions, cloud hosting, domain renewal, software licenses, AWS, Google Workspace, Microsoft 365, Zoho, hosting, server" },
+  { code: "raw_materials", name: "Raw Materials & Inventory", color: "#8e44ad", llm_prompt: "raw materials, stock purchases, inventory, wholesale purchases, manufacturing inputs, packaging materials, components, trading goods" },
+  { code: "freight_shipping", name: "Freight & Shipping", color: "#d35400", llm_prompt: "shipping charges, courier, Delhivery, BlueDart, DTDC, India Post, freight, logistics, packing charges, transportation of goods" },
+  { code: "loan_emi", name: "Loan & EMI", color: "#c0392b", llm_prompt: "loan EMI, car loan, business loan, home loan, personal loan, interest payment, principal repayment, NBFC, bank loan" },
+  { code: "donations", name: "Donations & CSR", color: "#27ae60", llm_prompt: "donations under 80G, CSR expenses, charity, trust donations, temple/religious donations, NGO contribution" },
+  { code: "client_entertainment", name: "Client Entertainment", color: "#f39c12", llm_prompt: "client meetings, business dinners, hospitality, client gifts, event tickets, business entertainment" },
+  { code: "ecommerce_fees", name: "E-Commerce & Platform Fees", color: "#9b59b6", llm_prompt: "Amazon commission, Flipkart fees, marketplace charges, payment gateway fees, Razorpay, Paytm commission, platform deductions" },
 ]
 
 export const DEFAULT_PROJECTS = [
@@ -142,6 +183,12 @@ export const DEFAULT_PROJECTS = [
   { code: "rental_income", name: "Rental Income", llm_prompt: "rental income, property maintenance, tenant related, house property", color: "#2b5a1d" },
   { code: "capital_gains", name: "Capital Gains", llm_prompt: "investments, stocks, mutual funds, property sale, capital assets", color: "#c69713" },
   { code: "freelance", name: "Freelance / Consulting", llm_prompt: "freelance work, consulting, contract projects, gig work, client projects", color: "#8753fb" },
+
+  // New projects for broader Indian business coverage
+  { code: "construction", name: "Construction / Real Estate", llm_prompt: "construction, building, property development, site expenses, labor, material for construction, real estate", color: "#e67e22" },
+  { code: "agriculture", name: "Agriculture / Farming", llm_prompt: "farming, agriculture, crop, seeds, fertilizer, tractor, harvest, farm equipment, mandi", color: "#27ae60" },
+  { code: "ecommerce", name: "E-Commerce", llm_prompt: "online sales, Amazon, Flipkart, marketplace, e-commerce orders, returns, online store", color: "#3498db" },
+  { code: "export_import", name: "Export / Import", llm_prompt: "exports, imports, customs duty, foreign trade, SEZ, international shipping, forex", color: "#9b59b6" },
 ]
 
 export const DEFAULT_CURRENCIES = [
