@@ -43,6 +43,7 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
         apiKey: config.apiKey,
         model: config.model,
         temperature: temperature,
+        maxOutputTokens: 8192,
       })
     } else if (config.provider === "mistral") {
       model = new ChatMistralAI({
