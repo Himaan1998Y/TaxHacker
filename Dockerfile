@@ -2,6 +2,7 @@ FROM node:23-slim AS base
 
 # Default environment variables
 ENV PORT=7331
+ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
 
 # Build stage
