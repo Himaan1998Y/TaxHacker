@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { logSecurityEvent } from "@/lib/security-log"
 import config from "@/lib/config"
 import { User } from "@/prisma/client"
 import crypto from "crypto"
@@ -66,6 +67,8 @@ export async function authenticateAgent(
   const providedKey = Buffer.from(apiKey, "utf8")
 
   if (storedKey.length !== providedKey.length || !crypto.timingSafeEqual(storedKey, providedKey)) {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null
+    logSecurityEvent("agent.key_rejected", user.id, { keyPrefix: apiKey.slice(0, 8) }, ip, req.headers.get("user-agent"))
     return NextResponse.json(
       { error: "Invalid API key" },
       { status: 401 }

@@ -4,15 +4,33 @@ import { rateLimit } from "@/lib/rate-limit"
 import { getSessionCookie } from "better-auth/cookies"
 import { NextRequest, NextResponse } from "next/server"
 
+// Route-specific rate limits (requests per minute)
+const RATE_LIMITS: Record<string, number> = {
+  "/api/auth/": 5,
+  "/api/self-hosted-auth": 5,
+  "/api/agent/": 60,
+  "/api/": 120,          // general API
+}
+
+function getRateLimit(pathname: string): number | null {
+  for (const [prefix, limit] of Object.entries(RATE_LIMITS)) {
+    if (pathname.startsWith(prefix)) return limit
+  }
+  return null // no rate limit for non-API routes
+}
+
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // ── Rate limiting on auth endpoints (5 req/min per IP) ──
-  if (pathname.startsWith("/api/auth/")) {
+  // ── Rate limiting (route-specific) ──
+  const maxRequests = getRateLimit(pathname)
+  if (maxRequests) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || request.headers.get("x-real-ip")
       || "unknown"
-    const { allowed, remaining, resetAt } = rateLimit(ip, { maxRequests: 5, windowMs: 60 * 1000 })
+    // Use route prefix as part of the key so limits are independent per route group
+    const routeKey = Object.keys(RATE_LIMITS).find(p => pathname.startsWith(p)) || "api"
+    const { allowed, remaining, resetAt } = rateLimit(`${ip}:${routeKey}`, { maxRequests, windowMs: 60 * 1000 })
 
     if (!allowed) {
       return new NextResponse("Too many requests. Try again later.", {
@@ -26,7 +44,10 @@ export default async function middleware(request: NextRequest) {
 
     const response = NextResponse.next()
     response.headers.set("X-RateLimit-Remaining", String(remaining))
-    return response
+    // For auth endpoints, return immediately (don't check session)
+    if (pathname.startsWith("/api/auth/") || pathname === "/api/self-hosted-auth") {
+      return response
+    }
   }
 
   // ── Self-hosted mode ──
@@ -37,7 +58,7 @@ export default async function middleware(request: NextRequest) {
       const expectedToken = hashSelfHostedToken(globalConfig.selfHosted.password)
       if (authCookie !== expectedToken) {
         // Allow the password verification endpoint and static assets through
-        if (pathname === "/api/self-hosted-auth" || pathname.startsWith("/_next/") || pathname.startsWith("/logo/")) {
+        if (pathname === "/api/self-hosted-auth" || pathname === "/api/health" || pathname.startsWith("/api/agent/") || pathname.startsWith("/_next/") || pathname.startsWith("/logo/")) {
           return NextResponse.next()
         }
         // Redirect to password page
@@ -59,7 +80,7 @@ export default async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/api/auth/:path*",
+    "/api/:path*",
     "/transactions/:path*",
     "/settings/:path*",
     "/export/:path*",
