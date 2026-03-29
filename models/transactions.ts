@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { logAudit, sanitizeForAudit } from "@/lib/audit"
 import { Field, Prisma, Transaction } from "@/prisma/client"
 import { cache } from "react"
 import { getFields } from "./fields"
@@ -154,6 +155,9 @@ export const createTransaction = async (userId: string, data: TransactionData): 
     },
   })
 
+  // Audit trail (Companies Act 2023 — immutable record)
+  logAudit(userId, "transaction", transaction.id, "create", null, sanitizeForAudit(transaction as unknown as Record<string, unknown>))
+
   // Generate embedding async (non-blocking, best-effort)
   embedTransactionAsync(transaction)
 
@@ -161,6 +165,9 @@ export const createTransaction = async (userId: string, data: TransactionData): 
 }
 
 export const updateTransaction = async (id: string, userId: string, data: TransactionData): Promise<Transaction> => {
+  // Capture old value for audit trail
+  const oldTransaction = await prisma.transaction.findUnique({ where: { id, userId } })
+
   const { standard, extra } = await splitTransactionDataExtraFields(data, userId)
 
   const transaction = await prisma.transaction.update({
@@ -171,6 +178,13 @@ export const updateTransaction = async (id: string, userId: string, data: Transa
       items: data.items ? (data.items as Prisma.InputJsonValue) : [],
     },
   })
+
+  // Audit trail (Companies Act 2023 — captures before + after)
+  logAudit(
+    userId, "transaction", id, "update",
+    oldTransaction ? sanitizeForAudit(oldTransaction as unknown as Record<string, unknown>) : null,
+    sanitizeForAudit(transaction as unknown as Record<string, unknown>)
+  )
 
   // Re-embed after update (non-blocking)
   embedTransactionAsync(transaction)
@@ -189,6 +203,9 @@ export const deleteTransaction = async (id: string, userId: string): Promise<Tra
   const transaction = await getTransactionById(id, userId)
 
   if (transaction) {
+    // Audit trail BEFORE delete (Companies Act 2023 — record what was deleted)
+    logAudit(userId, "transaction", id, "delete", sanitizeForAudit(transaction as unknown as Record<string, unknown>), null)
+
     const files = Array.isArray(transaction.files) ? transaction.files : []
 
     for (const fileId of files as string[]) {
@@ -204,6 +221,12 @@ export const deleteTransaction = async (id: string, userId: string): Promise<Tra
 }
 
 export const bulkDeleteTransactions = async (ids: string[], userId: string) => {
+  // Audit trail for each deleted transaction
+  const transactions = await prisma.transaction.findMany({ where: { id: { in: ids }, userId } })
+  for (const tx of transactions) {
+    logAudit(userId, "transaction", tx.id, "delete", sanitizeForAudit(tx as unknown as Record<string, unknown>), null)
+  }
+
   return await prisma.transaction.deleteMany({
     where: { id: { in: ids }, userId },
   })

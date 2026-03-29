@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { logAudit, sanitizeForAudit } from "@/lib/audit"
 import config from "@/lib/config"
 import { PROVIDERS } from "@/lib/llm-providers"
 import { cache } from "react"
@@ -57,7 +58,10 @@ export const getSettings = cache(async (userId: string): Promise<SettingsMap> =>
 })
 
 export async function updateSettings(userId: string, code: string, value: string | undefined) {
-  return await prisma.setting.upsert({
+  // Capture old value for audit trail
+  const existing = await prisma.setting.findUnique({ where: { userId_code: { code, userId } } })
+
+  const setting = await prisma.setting.upsert({
     where: { userId_code: { code, userId } },
     update: { value },
     create: {
@@ -67,4 +71,13 @@ export async function updateSettings(userId: string, code: string, value: string
       userId,
     },
   })
+
+  // Audit trail — masks API keys automatically via sanitizeForAudit
+  logAudit(
+    userId, "setting", setting.id, existing ? "update" : "create",
+    existing ? sanitizeForAudit(existing as unknown as Record<string, unknown>) : null,
+    sanitizeForAudit(setting as unknown as Record<string, unknown>)
+  )
+
+  return setting
 }

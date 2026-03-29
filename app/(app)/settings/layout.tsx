@@ -41,6 +41,10 @@ const settingsCategories = [
     href: "/settings/currencies",
   },
   {
+    title: "Audit Log",
+    href: "/settings/audit-log",
+  },
+  {
     title: "Backups",
     href: "/settings/backups",
   },
