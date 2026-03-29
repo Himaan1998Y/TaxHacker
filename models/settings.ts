@@ -1,9 +1,16 @@
 import { prisma } from "@/lib/db"
 import { logAudit, sanitizeForAudit } from "@/lib/audit"
+import { encrypt, decrypt } from "@/lib/encryption"
 import config from "@/lib/config"
 import { PROVIDERS } from "@/lib/llm-providers"
 import { cache } from "react"
 import { LLMProvider } from "@/ai/providers/llmProvider"
+
+// Settings codes that contain sensitive values — encrypted at rest
+const SENSITIVE_SETTINGS = new Set([
+  "openai_api_key", "google_api_key", "mistral_api_key", "openrouter_api_key",
+  "agent_api_key",
+])
 
 export type SettingsMap = Record<string, string>
 
@@ -52,7 +59,12 @@ export const getSettings = cache(async (userId: string): Promise<SettingsMap> =>
   })
 
   return settings.reduce((acc, setting) => {
-    acc[setting.code] = setting.value || ""
+    // Decrypt sensitive settings transparently
+    if (SENSITIVE_SETTINGS.has(setting.code) && setting.value) {
+      acc[setting.code] = decrypt(setting.value)
+    } else {
+      acc[setting.code] = setting.value || ""
+    }
     return acc
   }, {} as SettingsMap)
 })
@@ -61,12 +73,15 @@ export async function updateSettings(userId: string, code: string, value: string
   // Capture old value for audit trail
   const existing = await prisma.setting.findUnique({ where: { userId_code: { code, userId } } })
 
+  // Encrypt sensitive settings before writing to DB
+  const storedValue = (SENSITIVE_SETTINGS.has(code) && value) ? encrypt(value) : value
+
   const setting = await prisma.setting.upsert({
     where: { userId_code: { code, userId } },
-    update: { value },
+    update: { value: storedValue },
     create: {
       code,
-      value,
+      value: storedValue,
       name: code,
       userId,
     },

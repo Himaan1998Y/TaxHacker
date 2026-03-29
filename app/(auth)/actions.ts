@@ -46,6 +46,13 @@ export async function selfHostedGetStartedAction(formData: FormData) {
     await updateSettings(user.id, "default_currency", defaultCurrency as string)
   }
 
+  // Record consent (DPDP Act 2023 compliance)
+  const consentGiven = formData.get("consent_given")
+  if (consentGiven === "true") {
+    await updateSettings(user.id, "consent_timestamp", new Date().toISOString())
+    await updateSettings(user.id, "consent_version", "1.0")
+  }
+
   revalidatePath("/dashboard")
   redirect("/dashboard")
 }

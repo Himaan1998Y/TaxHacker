@@ -7,204 +7,138 @@ export default async function PrivacyPolicy() {
         <strong>Privacy Policy</strong>
       </h2>
 
-      <p className="text-slate-700 mb-6 leading-relaxed bg-yellow-50 p-3 border-l-4 border-yellow-400">
-        <strong className="text-slate-800">TL;DR:</strong> If you really care about privacy of your data, use our
-        self-hosted version instead. No cloud is safe. Use the platform is at your own risk.
-      </p>
-
       <p className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
-        <strong className="text-slate-700">Effective Date</strong>: April 22, 2025
+        <strong className="text-slate-700">Effective Date</strong>: March 29, 2026
         <br />
-        <strong className="text-slate-700">Contact Email</strong>:{" "}
+        <strong className="text-slate-700">Applicable Laws</strong>: Digital Personal Data Protection Act 2023 (India), IT Act 2000 Section 43A, Companies Act 2013
+        <br />
+        <strong className="text-slate-700">Contact</strong>:{" "}
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}
         </a>
-        <br />
-        <strong className="text-slate-700">Domain</strong>:{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
-        </a>
       </p>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) is committed to protecting your privacy. This
-        Privacy Policy describes how we collect, use, store, and protect your personal data when you use our services at{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          taxhacker.app
-        </a>
-        .
+        TaxHacker India (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) is committed to protecting your personal data in compliance with Indian data protection laws. This Privacy Policy describes how we collect, use, store, and protect your data.
+      </p>
+
+      <p className="text-slate-700 mb-6 leading-relaxed bg-blue-50 p-3 border-l-4 border-blue-400">
+        <strong className="text-slate-800">Self-Hosted Users:</strong> When you self-host TaxHacker, your data stays entirely on YOUR server. We have no access to it. This policy primarily applies to our cloud service. For self-hosted instances, YOU are the data controller and responsible for compliance.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        1. <strong>What Data We Collect</strong>
-      </h3>
-      <p className="text-slate-700 mb-3">We collect the following types of data when you use TaxHacker:</p>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">1. <strong>What Data We Collect</strong></h3>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
-        <li>
-          <strong className="text-slate-800">Account Data</strong>: Email address, display name, optional avatar image.
-          No passwords are stored.
-        </li>
-        <li>
-          <strong className="text-slate-800">Communication Data</strong>: Email messages we send for verification,
-          updates, or newsletters.
-        </li>
-        <li>
-          <strong className="text-slate-800">Uploaded Files</strong>: Invoices, receipts and any other files that you
-          upload, which may contain sensitive personal or financial information.
-        </li>
-        <li>
-          <strong className="text-slate-800">Session Metadata</strong>: IP address, browser type, and timestamps for
-          session security.
-        </li>
-        <li>
-          <strong className="text-slate-800">Service Usage Data</strong>: Metadata related to your activity within the
-          platform (e.g. number of uploaded files, AI tokens usage).
-        </li>
+        <li><strong className="text-slate-800">Account Data</strong>: Email address, display name, optional avatar.</li>
+        <li><strong className="text-slate-800">Business Data</strong>: Business name, address, GSTIN, PAN (as provided by you for tax compliance).</li>
+        <li><strong className="text-slate-800">Financial Records</strong>: Transaction data, invoices, receipts, and uploaded documents containing financial information.</li>
+        <li><strong className="text-slate-800">Session Data</strong>: IP address, browser type, timestamps for security and audit trail (retained for 8 years per Companies Act 2013).</li>
+        <li><strong className="text-slate-800">AI Processing Metadata</strong>: Token usage counts (not the content analyzed).</li>
       </ul>
+
+      <p className="text-slate-700 mb-6 leading-relaxed">
+        Under the IT Act 2000 (Section 43A), financial data including GSTIN, PAN, bank details, and transaction records are classified as <strong>sensitive personal data</strong>. We implement reasonable security practices to protect this data.
+      </p>
 
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        2. <strong>How We Use Your Data</strong>
-      </h3>
-      <p className="text-slate-700 mb-3">We use your data to:</p>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">2. <strong>How We Use Your Data</strong></h3>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
-        <li>Create and manage your TaxHacker account</li>
-        <li>Store and analyze your uploaded files</li>
-        <li>Improve your financial organization through AI-powered insights</li>
-        <li>Communicate with you about your account and service updates</li>
-        <li>Comply with legal obligations</li>
+        <li>Provide accounting and tax compliance services (GSTR-1, GSTR-3B generation)</li>
+        <li>AI-powered document analysis (invoice scanning, data extraction)</li>
+        <li>Generate reports for CA/auditor use</li>
+        <li>Maintain immutable audit trails (legally required)</li>
+        <li>Communicate service updates</li>
       </ul>
 
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        3. <strong>AI-Powered Processing</strong>
-      </h3>
-      <p className="text-slate-700 mb-3">
-        We use external AI services, specifically <strong className="text-slate-800">OpenAI (ChatGPT)</strong>, to:
-      </p>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">3. <strong>AI Processing &amp; Third-Party Services</strong></h3>
+      <p className="text-slate-700 mb-3">When you use AI analysis, document images are sent to your configured LLM provider:</p>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>Extract and interpret information from invoices using OCR</li>
-        <li>Analyze financial data for better user insights</li>
+        <li><strong>Google Gemini</strong> — processed per Google&apos;s data usage policies</li>
+        <li><strong>OpenAI</strong> — processed per OpenAI&apos;s API data usage policy (not used for training)</li>
+        <li><strong>Mistral AI</strong> — processed per Mistral&apos;s terms</li>
+        <li><strong>OpenRouter</strong> — routed to selected model provider</li>
       </ul>
-
-      <p className="text-slate-700 mb-6 leading-relaxed">
-        By using TaxHacker, you consent to the transfer of relevant data to these third-party providers for the purpose
-        of processing. These providers may operate outside the EU, in compliance with appropriate safeguards under GDPR
-        (e.g., SCCs).
-      </p>
-
-      <hr className="my-8 border-slate-200" />
-
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        4. <strong>Cookies and Tracking</strong>
-      </h3>
-      <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker does <strong className="text-slate-800">not use tracking cookies</strong> or third-party analytics. We
-        only collect aggregate access logs and usage statistics via{" "}
-        <strong className="text-slate-800">Cloudflare</strong> for infrastructure performance and security.
-      </p>
-
-      <hr className="my-8 border-slate-200" />
-
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        5. <strong>Data Storage and Security</strong>
-      </h3>
-      <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>
-          All data is stored on servers in <strong className="text-slate-800">Germany</strong>, hosted by{" "}
-          <strong className="text-slate-800">Hetzner Cloud</strong>.
-        </li>
-        <li>Files and personal data are stored in an unencrypted form.</li>
-        <li>Access to personal data is limited to authorized team members for debugging or support purposes only.</li>
-      </ul>
-
       <p className="text-slate-700 mb-6 leading-relaxed bg-yellow-50 p-3 border-l-4 border-yellow-400">
-        While we strive to maintain reasonable safeguards, no system is completely secure. Use the platform at your own
-        risk.
+        <strong>Important:</strong> Document images containing financial data are transmitted to these external AI services for processing. The AI provider processes the data to extract information and does not retain it beyond the API request. By using AI analysis, you consent to this data transfer.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        6. <strong>Legal Basis for Processing</strong>
-      </h3>
-      <p className="text-slate-700 mb-3">We process personal data based on:</p>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">4. <strong>Data Storage &amp; Security</strong></h3>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>
-          <strong className="text-slate-800">Your consent</strong>, which you grant when you create an account or upload
-          data
-        </li>
-        <li>
-          <strong className="text-slate-800">Our contractual obligations</strong> to provide the services you signed up
-          for
-        </li>
+        <li>Data is stored in PostgreSQL with AES-256 encryption for sensitive fields (API keys, business details)</li>
+        <li>All connections use TLS 1.2+ encryption in transit</li>
+        <li>Authentication uses SHA-256 hashed tokens (never plaintext passwords in cookies)</li>
+        <li>Application runs as non-root user in Docker containers</li>
+        <li>Rate limiting protects against brute-force attacks</li>
       </ul>
 
+      <hr className="my-8 border-slate-200" />
+
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">5. <strong>Audit Trail</strong></h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        You can withdraw consent at any time by deleting your account or contacting us directly.
+        Per the Companies Act 2013 (as amended), we maintain an <strong>immutable audit trail</strong> of all financial record changes. This includes: what was changed, when, by whom, and the before/after values. Audit records are retained for a minimum of <strong>8 years</strong> and cannot be modified or deleted.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        7. <strong>Data Retention</strong>
-      </h3>
-      <p className="text-slate-700 mb-3">We retain your data:</p>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">6. <strong>Data Retention</strong></h3>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>As long as your account remains active</li>
-        <li>Until you request deletion</li>
+        <li><strong>Financial records &amp; audit logs</strong>: 8 years minimum (Companies Act requirement)</li>
+        <li><strong>Uploaded documents</strong>: Retained with associated transactions for 8 years</li>
+        <li><strong>Account data</strong>: Until account deletion (financial records retained per above)</li>
+        <li><strong>Security logs</strong>: 180 days minimum (CERT-In requirement)</li>
       </ul>
 
-      <p className="text-slate-700 mb-6 leading-relaxed">
-        Once deleted, your data is removed from our systems, though some residual logs may remain for a short time due
-        to backups or operational needs.
-      </p>
-
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        8. <strong>Your Rights (under GDPR and similar laws)</strong>
-      </h3>
-      <p className="text-slate-700 mb-3">As a user, you have the right to:</p>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">7. <strong>Your Rights (DPDP Act 2023)</strong></h3>
+      <p className="text-slate-700 mb-3">As a Data Principal under the DPDP Act, you have the right to:</p>
       <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700">
-        <li>Access and review your personal data</li>
-        <li>Correct or update inaccurate information</li>
-        <li>Download a full backup of your data</li>
-        <li>Request permanent deletion of your account and associated data</li>
-        <li>Object to certain forms of processing</li>
-        <li>Lodge a complaint with a data protection authority</li>
+        <li>Access your personal data and obtain a summary</li>
+        <li>Correct inaccurate or incomplete data</li>
+        <li>Erase personal data (subject to legal retention requirements)</li>
+        <li>Download a complete backup of your data (Settings → Backups)</li>
+        <li>Withdraw consent for AI processing at any time</li>
+        <li>Nominate another person to exercise your rights</li>
+        <li>File a grievance with us or the Data Protection Board of India</li>
       </ul>
-
-      <p className="text-slate-700 mb-6 leading-relaxed">
-        To exercise your rights, contact us at{" "}
-        <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
-          {config.app.supportEmail}
-        </a>
-        .
+      <p className="text-slate-700 mb-6">
+        Contact{" "}
+        <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">{config.app.supportEmail}</a>
+        {" "}to exercise your rights. We will respond within 30 days.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        9. <strong>Children's Privacy</strong>
-      </h3>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">8. <strong>Cookies</strong></h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        TaxHacker is <strong className="text-slate-800">not intended for users under the age of 18</strong>. We do not
-        knowingly collect or store data from minors.
+        TaxHacker uses <strong>only essential cookies</strong> for authentication (session management). We do not use tracking cookies, analytics cookies, or third-party advertising. No data is shared with advertisers.
       </p>
 
       <hr className="my-8 border-slate-200" />
 
-      <h3 className="text-2xl font-semibold text-slate-800 mb-4">
-        10. <strong>Changes to This Policy</strong>
-      </h3>
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">9. <strong>Data Breach Notification</strong></h3>
       <p className="text-slate-700 mb-6 leading-relaxed">
-        We may update this Privacy Policy from time to time. Any changes will be published on this page with an updated
-        &quot;Effective Date.&quot; We encourage you to review the policy periodically.
+        In the event of a data breach, we will: (1) report to CERT-In within 6 hours as required by law, (2) notify affected users within 72 hours, and (3) take immediate containment and remediation actions per our Incident Response Plan.
+      </p>
+
+      <hr className="my-8 border-slate-200" />
+
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">10. <strong>Children</strong></h3>
+      <p className="text-slate-700 mb-6 leading-relaxed">
+        TaxHacker is not intended for users under 18. We do not knowingly collect data from minors. Per the DPDP Act, processing children&apos;s data requires verifiable parental consent, which we do not implement.
+      </p>
+
+      <hr className="my-8 border-slate-200" />
+
+      <h3 className="text-2xl font-semibold text-slate-800 mb-4">11. <strong>Changes to This Policy</strong></h3>
+      <p className="text-slate-700 mb-6 leading-relaxed">
+        We may update this policy to reflect legal changes or product updates. Changes are published on this page with an updated effective date. Continued use after changes constitutes acceptance.
       </p>
     </div>
   )

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { FormSelectCurrency } from "@/components/forms/select-currency"
 import { FormInput } from "@/components/forms/simple"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { DEFAULT_CURRENCIES, DEFAULT_SETTINGS } from "@/models/defaults"
 import { selfHostedGetStartedAction } from "../actions"
 import { FormSelect } from "@/components/forms/simple"
@@ -19,6 +20,7 @@ export default function SelfHostedSetupFormClient({ defaultProvider, defaultApiK
   const getDefaultApiKey = useCallback((providerKey: string) => defaultApiKeys[providerKey] ?? "", [defaultApiKeys])
 
   const [apiKey, setApiKey] = useState(getDefaultApiKey(provider))
+  const [consent, setConsent] = useState(false)
   const userTyped = useRef(false)
 
   useEffect(() => {
@@ -68,7 +70,21 @@ export default function SelfHostedSetupFormClient({ defaultProvider, defaultApiK
           </a>
         </small>
       </div>
-      <Button type="submit" className="w-auto p-6">
+      <div className="flex items-start gap-3 text-left">
+        <Checkbox
+          id="consent"
+          checked={consent}
+          onCheckedChange={(checked) => setConsent(checked === true)}
+        />
+        <label htmlFor="consent" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+          I understand that AI analysis sends document images to the selected LLM provider for processing.
+          I consent to this data processing per the{" "}
+          <a href="/docs/privacy_policy" target="_blank" className="underline text-blue-600">Privacy Policy</a>.
+          Financial records are retained for 8 years per Indian law.
+        </label>
+      </div>
+      <input type="hidden" name="consent_given" value={consent ? "true" : ""} />
+      <Button type="submit" className="w-auto p-6" disabled={!consent}>
         Get Started
       </Button>
     </form>
