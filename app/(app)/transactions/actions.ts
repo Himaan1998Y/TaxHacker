@@ -13,9 +13,9 @@ import {
 import { updateField } from "@/models/fields"
 import { createFile, deleteFile } from "@/models/files"
 import {
-  bulkDeleteTransactions,
+  bulkReverseTransactions,
   createTransaction,
-  deleteTransaction,
+  reverseTransaction,
   getTransactionById,
   updateTransaction,
   updateTransactionFiles,
@@ -81,14 +81,14 @@ export async function deleteTransactionAction(
     const transaction = await getTransactionById(transactionId, user.id)
     if (!transaction) throw new Error("Transaction not found")
 
-    await deleteTransaction(transaction.id, user.id)
+    await reverseTransaction(transaction.id, user.id)
 
     revalidatePath("/transactions")
 
     return { success: true, data: transaction }
   } catch (error) {
-    console.error("Failed to delete transaction:", error)
-    return { success: false, error: "Failed to delete transaction" }
+    console.error("Failed to reverse transaction:", error)
+    return { success: false, error: "Failed to reverse transaction" }
   }
 }
 
@@ -205,12 +205,12 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
 export async function bulkDeleteTransactionsAction(transactionIds: string[]) {
   try {
     const user = await getCurrentUser()
-    await bulkDeleteTransactions(transactionIds, user.id)
+    await bulkReverseTransactions(transactionIds, user.id)
     revalidatePath("/transactions")
     return { success: true }
   } catch (error) {
-    console.error("Failed to delete transactions:", error)
-    return { success: false, error: "Failed to delete transactions" }
+    console.error("Failed to reverse transactions:", error)
+    return { success: false, error: "Failed to reverse transactions" }
   }
 }
 

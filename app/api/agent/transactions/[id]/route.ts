@@ -3,7 +3,7 @@ import { authenticateAgent } from "../../auth"
 import {
   getTransactionById,
   updateTransaction,
-  deleteTransaction,
+  reverseTransaction,
 } from "@/models/transactions"
 
 /**
@@ -99,12 +99,12 @@ export async function DELETE(
   }
 
   try {
-    await deleteTransaction(id, user.id)
-    return NextResponse.json({ success: true, id })
+    const reversed = await reverseTransaction(id, user.id)
+    return NextResponse.json({ success: true, transaction: reversed })
   } catch (error) {
-    console.error("Agent API: delete transaction error:", error)
+    console.error("Agent API: reverse transaction error:", error)
     return NextResponse.json(
-      { error: "Failed to delete transaction" },
+      { error: "Failed to reverse transaction" },
       { status: 500 }
     )
   }

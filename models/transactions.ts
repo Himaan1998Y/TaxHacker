@@ -57,7 +57,7 @@ export const getTransactions = cache(
     transactions: Transaction[]
     total: number
   }> => {
-    const where: Prisma.TransactionWhereInput = { userId }
+    const where: Prisma.TransactionWhereInput = { userId, status: "active" }
     let orderBy: Prisma.TransactionOrderByWithRelationInput = { issuedAt: "desc" }
 
     if (filters) {
@@ -199,37 +199,58 @@ export const updateTransactionFiles = async (id: string, userId: string, files: 
   })
 }
 
-export const deleteTransaction = async (id: string, userId: string): Promise<Transaction | undefined> => {
+/**
+ * Reverse a transaction instead of deleting it (Companies Act 2013 compliance).
+ * Financial records must be retained — reversals mark them as 'reversed' without removing data.
+ */
+export const reverseTransaction = async (id: string, userId: string): Promise<Transaction | undefined> => {
   const transaction = await getTransactionById(id, userId)
 
+  if (transaction && transaction.status === "active") {
+    logAudit(userId, "transaction", id, "update",
+      sanitizeForAudit(transaction as unknown as Record<string, unknown>),
+      { ...sanitizeForAudit(transaction as unknown as Record<string, unknown>), status: "reversed" }
+    )
+
+    return await prisma.transaction.update({
+      where: { id, userId },
+      data: { status: "reversed" },
+    })
+  }
+}
+
+/** @deprecated Use reverseTransaction instead. This permanently deletes data. */
+export const deleteTransaction = async (id: string, userId: string): Promise<Transaction | undefined> => {
+  const transaction = await getTransactionById(id, userId)
   if (transaction) {
-    // Audit trail BEFORE delete (Companies Act 2023 — record what was deleted)
     logAudit(userId, "transaction", id, "delete", sanitizeForAudit(transaction as unknown as Record<string, unknown>), null)
-
     const files = Array.isArray(transaction.files) ? transaction.files : []
-
     for (const fileId of files as string[]) {
       if ((await getTransactionsByFileId(fileId, userId)).length <= 1) {
         await deleteFile(fileId, userId)
       }
     }
-
-    return await prisma.transaction.delete({
-      where: { id, userId },
-    })
+    return await prisma.transaction.delete({ where: { id, userId } })
   }
 }
 
-export const bulkDeleteTransactions = async (ids: string[], userId: string) => {
-  // Audit trail for each deleted transaction
-  const transactions = await prisma.transaction.findMany({ where: { id: { in: ids }, userId } })
+export const bulkReverseTransactions = async (ids: string[], userId: string) => {
+  const transactions = await prisma.transaction.findMany({ where: { id: { in: ids }, userId, status: "active" } })
   for (const tx of transactions) {
-    logAudit(userId, "transaction", tx.id, "delete", sanitizeForAudit(tx as unknown as Record<string, unknown>), null)
+    logAudit(userId, "transaction", tx.id, "update",
+      sanitizeForAudit(tx as unknown as Record<string, unknown>),
+      { ...sanitizeForAudit(tx as unknown as Record<string, unknown>), status: "reversed" }
+    )
   }
-
-  return await prisma.transaction.deleteMany({
+  return await prisma.transaction.updateMany({
     where: { id: { in: ids }, userId },
+    data: { status: "reversed" },
   })
+}
+
+/** @deprecated Use bulkReverseTransactions instead. */
+export const bulkDeleteTransactions = async (ids: string[], userId: string) => {
+  return await prisma.transaction.deleteMany({ where: { id: { in: ids }, userId } })
 }
 
 const splitTransactionDataExtraFields = async (
