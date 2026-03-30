@@ -8,8 +8,32 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       url: baseURL,
       lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1,
+      changeFrequency: "monthly",
+      priority: 1.0,
+    },
+    {
+      url: `${baseURL}/docs/gst-setup`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${baseURL}/docs/gstr1-guide`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${baseURL}/docs/faq`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${baseURL}/docs/ai`,
+      lastModified: new Date(),
+      changeFrequency: "yearly",
+      priority: 0.4,
     },
     {
       url: `${baseURL}/docs/privacy_policy`,
@@ -19,6 +43,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${baseURL}/docs/terms`,
+      lastModified: new Date(),
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${baseURL}/docs/cookie`,
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,

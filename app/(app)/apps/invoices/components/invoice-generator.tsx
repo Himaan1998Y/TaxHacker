@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { generateEInvoiceQRFromFields } from "@/lib/e-invoice"
 import { fetchAsBase64 } from "@/lib/utils"
 import { SettingsMap } from "@/models/settings"
 import { Currency, User } from "@/prisma/client"
@@ -69,6 +70,27 @@ function invoiceFormReducer(state: InvoiceFormData, action: any): InvoiceFormDat
   }
 }
 
+async function buildFormDataWithQR(formData: InvoiceFormData, user: User, settings: SettingsMap): Promise<InvoiceFormData> {
+  const businessGstin = settings["business_gstin"] ?? ""
+  const result = { ...formData }
+  if (formData.businessLogo) {
+    result.businessLogo = await fetchAsBase64(formData.businessLogo)
+  }
+  const subtotal = formData.items.reduce((sum, item) => sum + item.subtotal, 0)
+  const taxes = formData.additionalTaxes.reduce((sum, tax) => sum + tax.amount, 0)
+  const total = formData.taxIncluded ? subtotal : subtotal + taxes
+  result.qrDataUrl = await generateEInvoiceQRFromFields({
+    businessGstin,
+    businessName: user.name,
+    invoiceNumber: formData.invoiceNumber,
+    invoiceDate: formData.date,
+    invoiceValue: total.toFixed(2),
+    hsn: "",
+    irn: "",
+  })
+  return result
+}
+
 export function InvoiceGenerator({
   user,
   settings,
@@ -108,11 +130,8 @@ export function InvoiceGenerator({
     setIsPdfLoading(true)
 
     try {
-      if (formData.businessLogo) {
-        formData.businessLogo = await fetchAsBase64(formData.businessLogo)
-      }
-
-      const pdfBuffer = await generateInvoicePDF(formData)
+      const enrichedData = await buildFormDataWithQR(formData, user, settings)
+      const pdfBuffer = await generateInvoicePDF(enrichedData)
 
       // Create a blob from the buffer
       const blob = new Blob([pdfBuffer], { type: "application/pdf" })
@@ -192,11 +211,8 @@ export function InvoiceGenerator({
     setIsSavingTransaction(true)
 
     try {
-      if (formData.businessLogo) {
-        formData.businessLogo = await fetchAsBase64(formData.businessLogo)
-      }
-
-      const result = await saveInvoiceAsTransactionAction(formData)
+      const enrichedData = await buildFormDataWithQR(formData, user, settings)
+      const result = await saveInvoiceAsTransactionAction(enrichedData)
       if (result.success && result.data?.id) {
         // Redirect to saved transaction
         startTransition(() => {

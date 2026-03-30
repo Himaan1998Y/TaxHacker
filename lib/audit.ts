@@ -35,8 +35,10 @@ export async function logAudit(
         entityType,
         entityId,
         action,
-        oldValue: oldValue ?? undefined,
-        newValue: newValue ?? undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        oldValue: oldValue as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        newValue: newValue as any,
         ipAddress,
         userAgent,
       },

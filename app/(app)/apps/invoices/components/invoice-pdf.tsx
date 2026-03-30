@@ -279,6 +279,7 @@ const styles = StyleSheet.create({
 })
 
 export function InvoicePDF({ data }: { data: InvoiceFormData }): ReactElement {
+  const hasQR = !!data.qrDataUrl
   const calculateSubtotal = (): number => {
     return data.items.reduce((sum: number, item: InvoiceItem) => sum + item.subtotal, 0)
   }
@@ -305,11 +306,16 @@ export function InvoicePDF({ data }: { data: InvoiceFormData }): ReactElement {
               <Text style={styles.title}>{data.title}</Text>
               <Text style={styles.subtitle}>{data.invoiceNumber}</Text>
             </View>
-            {data.businessLogo && (
-              <View style={styles.headerRight}>
-                <Image src={data.businessLogo} style={styles.logo} />
-              </View>
-            )}
+            <View style={{ flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+              {data.businessLogo && (
+                <View style={styles.headerRight}>
+                  <Image src={data.businessLogo} style={styles.logo} />
+                </View>
+              )}
+              {hasQR && (
+                <Image src={data.qrDataUrl as string} style={{ width: 72, height: 72 }} />
+              )}
+            </View>
           </View>
         </View>
 

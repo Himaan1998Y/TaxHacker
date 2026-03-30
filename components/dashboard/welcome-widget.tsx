@@ -8,7 +8,33 @@ import { revalidatePath } from "next/cache"
 import Image from "next/image"
 import Link from "next/link"
 
-export async function WelcomeWidget() {
+type OnboardingSteps = {
+  hasApiKey: boolean
+  hasChangedCurrency: boolean
+  hasFirstUpload: boolean
+  hasFirstAnalysis: boolean
+  hasViewedGSTR1: boolean
+}
+
+type WelcomeWidgetProps = {
+  onboardingSteps?: OnboardingSteps
+  completedCount?: number
+}
+
+function ChecklistItem({ done, href, label }: { done: boolean; href: string; label: string }) {
+  return (
+    <Link href={href} className="flex items-center gap-2 text-sm hover:text-foreground transition-colors">
+      {done ? (
+        <span className="text-green-500">✓</span>
+      ) : (
+        <span className="text-muted-foreground">○</span>
+      )}
+      <span className={done ? "line-through text-muted-foreground" : ""}>{label}</span>
+    </Link>
+  )
+}
+
+export async function WelcomeWidget({ onboardingSteps, completedCount }: WelcomeWidgetProps = {}) {
   const user = await getCurrentUser()
   const settings = await getSettings(user.id)
 
@@ -108,6 +134,21 @@ export async function WelcomeWidget() {
             </Button>
           </Link>
         </div>
+        {onboardingSteps && (
+          <div className="mt-4 border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">Getting Started ({completedCount}/5)</span>
+              <span className="text-xs text-muted-foreground">{completedCount === 5 ? "All done! 🎉" : `${5 - (completedCount ?? 0)} remaining`}</span>
+            </div>
+            <div className="space-y-2">
+              <ChecklistItem done={onboardingSteps.hasApiKey} href="/settings/llm" label="Set up AI provider" />
+              <ChecklistItem done={onboardingSteps.hasChangedCurrency} href="/settings" label="Set default currency to INR" />
+              <ChecklistItem done={onboardingSteps.hasFirstUpload} href="/unsorted" label="Upload your first invoice" />
+              <ChecklistItem done={onboardingSteps.hasFirstAnalysis} href="/unsorted" label="Run AI analysis on an invoice" />
+              <ChecklistItem done={onboardingSteps.hasViewedGSTR1} href="/apps/gstr1" label="View your first GSTR-1 report" />
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   )

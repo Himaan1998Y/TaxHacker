@@ -309,6 +309,116 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* How It Works */}
+      <section className="py-20 px-8 bg-white relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-indigo-600 bg-clip-text text-transparent">
+              How It Works
+            </h2>
+            <p className="text-gray-600 max-w-xl mx-auto">From invoice scan to GST-ready report in 3 steps</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-10">
+            <div className="text-center p-8 rounded-3xl bg-gradient-to-br from-pink-50 to-pink-100/50 ring-2 ring-pink-200 hover:shadow-xl transition-all duration-300">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-2xl font-bold flex items-center justify-center mx-auto mb-5 shadow-lg">1</div>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">Upload Any Document</h3>
+              <p className="text-gray-600">Drag-and-drop invoices, receipts, or bank statements — PDF, image, even a photo of a handwritten kirana bill</p>
+            </div>
+            <div className="text-center p-8 rounded-3xl bg-gradient-to-br from-indigo-50 to-indigo-100/50 ring-2 ring-indigo-200 hover:shadow-xl transition-all duration-300">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-2xl font-bold flex items-center justify-center mx-auto mb-5 shadow-lg">2</div>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">AI Extracts Everything</h3>
+              <p className="text-gray-600">Gemini / GPT-4o reads GSTIN, HSN/SAC, CGST, SGST, IGST, TDS, party name, and amount — in seconds</p>
+            </div>
+            <div className="text-center p-8 rounded-3xl bg-gradient-to-br from-green-50 to-emerald-100/50 ring-2 ring-green-200 hover:shadow-xl transition-all duration-300">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-2xl font-bold flex items-center justify-center mx-auto mb-5 shadow-lg">3</div>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">Export to GSTR / Tally</h3>
+              <p className="text-gray-600">One-click GSTR-1, GSTR-3B, Tally XML, and CSV exports. Share with your CA or file directly on the GST portal</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Built for India */}
+      <section className="py-20 px-8 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-300 to-amber-300 rounded-full opacity-10 blur-3xl" />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center mb-14">
+            <div className="inline-block px-5 py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-bold mb-4 shadow">
+              🇮🇳 Made for the Indian Market
+            </div>
+            <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-700 to-amber-700 bg-clip-text text-transparent">
+              Built for India. Not just translated.
+            </h2>
+            <p className="text-gray-700 max-w-2xl mx-auto">Most accounting tools are built for the West and bolted onto India. TaxHacker India is built ground-up for Indian compliance.</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: "🧾", title: "GSTIN Validation", desc: "Luhn mod-36 checksum validation on every invoice — catches fake GSTINs before filing" },
+              { icon: "📅", title: "Indian FY (Apr–Mar)", desc: "Quarter views, TDS due dates, and advance tax milestones follow the Indian financial year" },
+              { icon: "🏦", title: "TDS on 194C / 194J", desc: "Contractor and professional TDS auto-calculated. Section codes stored per transaction" },
+              { icon: "📋", title: "GSTR-1 & GSTR-3B", desc: "One-click export in the exact JSON format accepted by the GSTN portal" },
+              { icon: "📄", title: "e-Invoice QR", desc: "GST e-Invoice QR code on every PDF — IRP-compatible format, ready for B2B supplies" },
+              { icon: "🔐", title: "DPDP Act Compliant", desc: "AES-256 encryption at rest, consent management, 8-year audit trail (Companies Act 2013)" },
+              { icon: "🗣️", title: "Hindi + English", desc: "AI understands mixed-language invoices, Hindi vendor names, and Devanagari text" },
+              { icon: "📦", title: "Tally Export", desc: "Export directly to Tally XML — no manual re-entry in your CA's desktop software" },
+            ].map((item) => (
+              <div key={item.title} className="bg-white/80 rounded-2xl p-6 shadow-md ring-1 ring-amber-100 hover:shadow-lg transition-all duration-300">
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h4 className="font-bold text-gray-900 mb-2">{item.title}</h4>
+                <p className="text-gray-600 text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Competitor Comparison */}
+      <section className="py-20 px-8 bg-white relative">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-indigo-600 bg-clip-text text-transparent">
+              Why TaxHacker India?
+            </h2>
+            <p className="text-gray-600 max-w-xl mx-auto">See how we stack up against the alternatives</p>
+          </div>
+          <div className="overflow-x-auto rounded-2xl shadow-xl ring-2 ring-indigo-100">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gradient-to-r from-pink-600 to-indigo-600 text-white">
+                  <th className="px-6 py-4 text-left font-semibold">Feature</th>
+                  <th className="px-4 py-4 text-center font-semibold">TaxHacker India</th>
+                  <th className="px-4 py-4 text-center font-semibold">Zoho Books</th>
+                  <th className="px-4 py-4 text-center font-semibold">Tally ERP</th>
+                  <th className="px-4 py-4 text-center font-semibold">ClearTax</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {[
+                  ["AI Invoice Scanning", "✅", "❌", "❌", "Partial"],
+                  ["Free / Open Source", "✅ Free", "❌ Paid", "❌ Paid", "Freemium"],
+                  ["Self-hostable", "✅", "❌", "✅ (desktop)", "❌"],
+                  ["GSTR-1 / GSTR-3B Export", "✅", "✅", "✅", "✅"],
+                  ["e-Invoice QR on PDF", "✅", "✅", "❌", "✅"],
+                  ["Hindi / mixed-language OCR", "✅", "❌", "❌", "❌"],
+                  ["Bring Your Own AI Key", "✅", "❌", "❌", "❌"],
+                  ["DPDP Act Compliance", "✅", "Partial", "❌", "Partial"],
+                  ["Tally XML Export", "✅", "❌", "Native", "❌"],
+                  ["Data locked to vendor", "❌ Your data", "✅ Locked", "Partial", "✅ Locked"],
+                ].map(([feature, th, zoho, tally, cleartax], i) => (
+                  <tr key={feature} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                    <td className="px-6 py-3 font-medium text-gray-800">{feature}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-green-600">{th}</td>
+                    <td className="px-4 py-3 text-center text-gray-600">{zoho}</td>
+                    <td className="px-4 py-3 text-center text-gray-600">{tally}</td>
+                    <td className="px-4 py-3 text-center text-gray-600">{cleartax}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       {/* Deployment Options */}
       <section
         id="start"

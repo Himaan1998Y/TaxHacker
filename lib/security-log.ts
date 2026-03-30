@@ -30,7 +30,8 @@ export async function logSecurityEvent(
         entityType: "security",
         entityId: event,
         action: event,
-        newValue: details ?? undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        newValue: details as any,
         ipAddress: ipAddress ?? undefined,
         userAgent: userAgent ?? undefined,
       },

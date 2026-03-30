@@ -51,6 +51,7 @@ export interface InvoiceFormData {
   subtotalLabel: string
   summarySubtotalLabel: string
   summaryTotalLabel: string
+  qrDataUrl?: string | null
 }
 
 interface InvoicePageProps {
