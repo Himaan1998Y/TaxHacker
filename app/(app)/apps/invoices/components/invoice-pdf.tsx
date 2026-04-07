@@ -313,7 +313,10 @@ export function InvoicePDF({ data }: { data: InvoiceFormData }): ReactElement {
                 </View>
               )}
               {hasQR && (
-                <Image src={data.qrDataUrl as string} style={{ width: 72, height: 72 }} />
+                <View style={{ alignItems: "flex-end" }}>
+                  <Image src={data.qrDataUrl as string} style={{ width: 72, height: 72 }} />
+                  <Text style={{ fontSize: 8, color: "#6B7280", marginTop: 4 }}>Invoice QR (Reference)</Text>
+                </View>
               )}
             </View>
           </View>

@@ -8,7 +8,15 @@ import { User } from "@/prisma/client"
 import { CircleCheckBig } from "lucide-react"
 import { useActionState } from "react"
 
-export default function BusinessSettingsForm({ user }: { user: User }) {
+export default function BusinessSettingsForm({
+  user,
+  bankDetails = "",
+}: {
+  user: User
+  // SECURITY: bank details are now passed separately from the encrypted
+  // Settings table — do not read `user.businessBankDetails` in templates.
+  bankDetails?: string
+}) {
   const [saveState, saveAction, pending] = useActionState(saveProfileAction, null)
 
   return (
@@ -32,7 +40,7 @@ export default function BusinessSettingsForm({ user }: { user: User }) {
           title="Bank Details"
           name="businessBankDetails"
           placeholder="Bank Name, Account No., IFSC Code, Branch"
-          defaultValue={user.businessBankDetails ?? ""}
+          defaultValue={bankDetails}
         />
 
         <FormAvatar

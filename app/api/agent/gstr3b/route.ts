@@ -3,6 +3,7 @@ import { authenticateAgent } from "../auth"
 import { getTransactions } from "@/models/transactions"
 import { getSettings } from "@/models/settings"
 import { generateGSTR3B, generateGSTR3BJSON } from "@/lib/gstr3b"
+import { getGSTRPeriodDates, validateGSTRPeriod } from "@/lib/indian-fy"
 
 /**
  * GET /api/agent/gstr3b?period=032026 — Generate GSTR-3B summary
@@ -19,26 +20,17 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams
   const period = params.get("period")
   const format = params.get("format") || "summary"
+  const periodValue = period || ""
 
-  if (!period || period.length !== 6) {
+  const validation = validateGSTRPeriod(periodValue)
+  if (!validation.valid) {
     return NextResponse.json(
-      { error: "period is required in MMYYYY format (e.g., 032026 for March 2026)" },
+      { error: validation.error || "Invalid period." },
       { status: 400 }
     )
   }
 
-  const month = parseInt(period.slice(0, 2)) - 1
-  const year = parseInt(period.slice(2))
-
-  if (month < 0 || month > 11 || year < 2017) {
-    return NextResponse.json(
-      { error: "Invalid period. Month must be 01-12, year must be >= 2017." },
-      { status: 400 }
-    )
-  }
-
-  const dateFrom = new Date(year, month, 1)
-  const dateTo = new Date(year, month + 1, 0, 23, 59, 59)
+  const { start: dateFrom, end: dateTo } = getGSTRPeriodDates(periodValue)
 
   const { transactions } = await getTransactions(user.id, {
     dateFrom: dateFrom.toISOString(),
@@ -53,13 +45,14 @@ export async function GET(req: NextRequest) {
     transactions,
     businessStateCode,
     businessGSTIN,
-    period
+    periodValue,
+    (settings as any).itc_blocked_categories || []
   )
 
   if (format === "json") {
     const portalJSON = generateGSTR3BJSON(report)
-    return NextResponse.json({ gstr3b: portalJSON, period })
+    return NextResponse.json({ gstr3b: portalJSON, period: periodValue })
   }
 
-  return NextResponse.json({ report, period })
+  return NextResponse.json({ report, period: periodValue })
 }

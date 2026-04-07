@@ -56,7 +56,7 @@ export async function analyzeFileAction(
     attachments = await loadAttachmentsForAI(user, file)
   } catch (error) {
     console.error("Failed to retrieve files:", error)
-    return { success: false, error: "Failed to retrieve files: " + error }
+    return { success: false, error: "Failed to retrieve files. Please try again." }
   }
 
   const prompt = buildLLMPrompt(
@@ -88,7 +88,7 @@ export async function saveFileAsTransactionAction(
     const validatedForm = transactionFormSchema.safeParse(Object.fromEntries(formData.entries()))
 
     if (!validatedForm.success) {
-      return { success: false, error: validatedForm.error.message }
+      return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
     }
 
     // Get the file record
@@ -97,7 +97,7 @@ export async function saveFileAsTransactionAction(
     if (!file) throw new Error("File not found")
 
     // Create transaction
-    const transaction = await createTransaction(user.id, validatedForm.data)
+    const transaction = await createTransaction(user.id, validatedForm.data as TransactionData)
 
     // Move file to processed location
     const userUploadsDirectory = getUserUploadsDirectory(user)
@@ -124,7 +124,7 @@ export async function saveFileAsTransactionAction(
     return { success: true, data: transaction }
   } catch (error) {
     console.error("Failed to save transaction:", error)
-    return { success: false, error: `Failed to save transaction: ${error}` }
+    return { success: false, error: "Failed to save transaction. Please try again." }
   }
 }
 
@@ -215,6 +215,6 @@ export async function splitFileIntoItemsAction(
     return { success: true }
   } catch (error) {
     console.error("Failed to split file into items:", error)
-    return { success: false, error: `Failed to split file into items: ${error}` }
+    return { success: false, error: "Failed to split file into items. Please try again." }
   }
 }

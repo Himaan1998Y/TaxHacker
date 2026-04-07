@@ -66,3 +66,44 @@ export function updateUser(userId: string, data: Prisma.UserUpdateInput) {
     data,
   })
 }
+
+/**
+ * Atomically reserve storage quota for an upload, enforcing the quota
+ * at the DB level. Returns `true` if the reservation succeeded (storage
+ * was incremented), `false` if the user would exceed their limit.
+ *
+ * This prevents a TOCTOU race where two concurrent uploads both pass
+ * the read-then-check pattern before either commits.
+ *
+ * Call `releaseStorageQuota` on error to roll back the reservation.
+ */
+export async function reserveStorageQuota(userId: string, fileSize: number): Promise<boolean> {
+  if (fileSize <= 0) return true
+  const size = BigInt(fileSize)
+  // storage_limit < 0 means "unlimited" (self-hosted + unlimited tier).
+  // The WHERE clause makes the increment atomic: PostgreSQL checks the
+  // predicate and updates in the same transaction, so no other request
+  // can slip past the quota.
+  const rows = await prisma.$executeRaw`
+    UPDATE "users"
+    SET "storage_used" = "storage_used" + ${size}
+    WHERE "id" = ${userId}::uuid
+      AND ("storage_limit" < 0 OR "storage_used" + ${size} <= "storage_limit")
+  `
+  return Number(rows) > 0
+}
+
+/**
+ * Roll back a prior `reserveStorageQuota` call. Used when a file write
+ * fails after the quota was already reserved. Clamps at 0 to avoid
+ * negative usage if called out of order.
+ */
+export async function releaseStorageQuota(userId: string, fileSize: number): Promise<void> {
+  if (fileSize <= 0) return
+  const size = BigInt(fileSize)
+  await prisma.$executeRaw`
+    UPDATE "users"
+    SET "storage_used" = GREATEST("storage_used" - ${size}, 0::bigint)
+    WHERE "id" = ${userId}::uuid
+  `
+}

@@ -1,5 +1,3 @@
-"use server"
-
 import { ActionState } from "@/lib/actions"
 import { updateFile } from "@/models/files"
 import { getLLMSettings, getSettings } from "@/models/settings"

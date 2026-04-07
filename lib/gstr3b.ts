@@ -80,7 +80,7 @@ export function generateGSTR3B(
   // ─── Table 3.1: Outward Supplies ────────────────────────────────
   // Reuse GSTR-1 report for outward supply totals
   const gstr1 = generateGSTR1Report(incomeTransactions, businessStateCode)
-  const table31 = computeTable31(gstr1)
+  const table31 = computeTable31(gstr1, expenseTransactions)
 
   // ─── Table 4: ITC from Inward Supplies ──────────────────────────
   const table4 = computeTable4(expenseTransactions, itcBlockedCategories)
@@ -103,7 +103,7 @@ export function generateGSTR3B(
 
 // ─── Table 3.1: Outward Supplies ─────────────────────────────────────
 
-function computeTable31(gstr1: GSTR1Summary): Table31Row[] {
+function computeTable31(gstr1: GSTR1Summary, expenses: any[]): Table31Row[] {
   const rows: Table31Row[] = []
 
   // (a) Outward taxable supplies (other than zero rated, nil rated, exempted)
@@ -148,6 +148,53 @@ function computeTable31(gstr1: GSTR1Summary): Table31Row[] {
     taxableValue: round(nilExempt),
     igst: 0, cgst: 0, sgst: 0, cess: 0,
   })
+
+  // (d) Inward supplies liable to reverse charge
+  const rcmTransactions = expenses
+    .map(tx => transactionToGSTR1(tx))
+    .filter(tx => tx.reverseCharge)
+  const rcmTotals = rcmTransactions.reduce(
+    (sum, tx) => {
+      const taxableValue = tx.taxableAmount
+      sum.taxableValue += taxableValue
+      sum.igst += tx.igst
+      sum.cgst += tx.cgst
+      sum.sgst += tx.sgst
+      sum.cess += tx.cess
+      return sum
+    },
+    { taxableValue: 0, igst: 0, cgst: 0, sgst: 0, cess: 0 }
+  )
+
+  rows.push({
+    description: "(d) Inward supplies (liable to reverse charge)",
+    taxableValue: round(rcmTotals.taxableValue),
+    igst: round(rcmTotals.igst),
+    cgst: round(rcmTotals.cgst),
+    sgst: round(rcmTotals.sgst),
+    cess: round(rcmTotals.cess),
+  })
+
+  // (e) Non-GST outward supplies
+  const nonGSTTransactions = gstr1.classified.filter(
+    tx => tx.gstRate === 0 && (
+      (tx.categoryCode || "").toLowerCase().includes("non_gst") ||
+      (tx.categoryCode || "").toLowerCase().includes("non-gst") ||
+      (tx.supplyType || "").toUpperCase() === "NON_GST"
+    )
+  )
+  const nonGSTTotal = nonGSTTransactions.reduce((sum, tx) => sum + tx.taxableAmount, 0)
+
+  rows.push({
+    description: "(e) Non-GST outward supplies",
+    taxableValue: round(nonGSTTotal),
+    igst: 0, cgst: 0, sgst: 0, cess: 0,
+  })
+
+  // Adjust row (c) so nil/exempt totals do not double-count non-GST outward supplies.
+  const nilExemptTotal = gstr1.sectionCounts.nil.value + gstr1.sectionCounts.exempt.value
+  const otherOutwardValue = Math.max(0, nilExemptTotal - nonGSTTotal)
+  rows[2].taxableValue = round(otherOutwardValue)
 
   return rows
 }
@@ -222,19 +269,20 @@ function computeTable5(expenses: any[], businessStateCode: string | null): Table
     const gstTx = transactionToGSTR1(tx)
     if (gstTx.gstRate > 0) continue // Only zero-rated
 
+    const taxableValue = gstTx.taxableAmount
     const isInterState = isInterStateSupply(gstTx, businessStateCode)
     const category = tx.categoryCode || ""
 
     if (category.includes("exempt")) {
-      if (isInterState) exemptInter += gstTx.total
-      else exemptIntra += gstTx.total
+      if (isInterState) exemptInter += taxableValue
+      else exemptIntra += taxableValue
     } else if (category.includes("non_gst") || category.includes("non-gst")) {
-      if (isInterState) nonGSTInter += gstTx.total
-      else nonGSTIntra += gstTx.total
+      if (isInterState) nonGSTInter += taxableValue
+      else nonGSTIntra += taxableValue
     } else {
       // Default zero-rate to nil
-      if (isInterState) nilInter += gstTx.total
-      else nilIntra += gstTx.total
+      if (isInterState) nilInter += taxableValue
+      else nilIntra += taxableValue
     }
   }
 
@@ -290,6 +338,17 @@ export function generateGSTR3BJSON(report: GSTR3BSummary): object {
       },
       osup_nil_exmp: {
         txval: report.table31[2]?.taxableValue || 0,
+        iamt: 0, camt: 0, samt: 0, csamt: 0,
+      },
+      rcm_sup: {
+        txval: report.table31[3]?.taxableValue || 0,
+        iamt: report.table31[3]?.igst || 0,
+        camt: report.table31[3]?.cgst || 0,
+        samt: report.table31[3]?.sgst || 0,
+        csamt: report.table31[3]?.cess || 0,
+      },
+      non_gst_sup: {
+        txval: report.table31[4]?.taxableValue || 0,
         iamt: 0, camt: 0, samt: 0, csamt: 0,
       },
     },

@@ -2,13 +2,21 @@ import { NextRequest, NextResponse } from "next/server"
 import { authenticateAgent } from "../auth"
 import { createFile } from "@/models/files"
 import {
+  MAX_UPLOAD_SIZE_BYTES,
+  detectMimeType,
+  extensionFromDetectedMime,
   getUserUploadsDirectory,
-  unsortedFilePath,
+  isEnoughStorageToUploadFile,
   safePathJoin,
+  unsortedFilePath,
+  validateUploadedFile,
 } from "@/lib/files"
 import { randomUUID } from "crypto"
-import { mkdir, writeFile } from "fs/promises"
+import { mkdir, unlink, writeFile } from "fs/promises"
 import path from "path"
+
+const MAX_MULTIPART_OVERHEAD_BYTES = 2 * 1024 * 1024
+const MAX_REQUEST_BYTES = MAX_UPLOAD_SIZE_BYTES + MAX_MULTIPART_OVERHEAD_BYTES
 
 /**
  * POST /api/agent/files — Upload a file (invoice, receipt, etc.)
@@ -23,6 +31,11 @@ export async function POST(req: NextRequest) {
   const authResult = await authenticateAgent(req)
   if (authResult instanceof NextResponse) return authResult
   const { user } = authResult
+
+  const contentLength = Number(req.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+    return NextResponse.json({ error: "Request payload exceeds limit." }, { status: 413 })
+  }
 
   let formData: FormData
   try {
@@ -42,42 +55,70 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Validate file type
-  const allowedPrefixes = ["image/", "application/pdf"]
-  const isAllowed = allowedPrefixes.some((prefix) => file.type.startsWith(prefix))
-  if (!isAllowed) {
-    return NextResponse.json(
-      { error: `File type '${file.type}' not supported. Send images or PDFs.` },
-      { status: 400 }
-    )
+  if (file.size === 0) {
+    return NextResponse.json({ error: "File is empty." }, { status: 400 })
+  }
+
+  if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+    return NextResponse.json({ error: "File exceeds 50MB limit." }, { status: 413 })
+  }
+
+  if (!isEnoughStorageToUploadFile(user, file.size)) {
+    return NextResponse.json({ error: "Storage quota exceeded." }, { status: 400 })
   }
 
   try {
     const userUploadsDirectory = getUserUploadsDirectory(user)
     const fileUuid = randomUUID()
-    const relativeFilePath = unsortedFilePath(fileUuid, file.name)
+
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const sniffBytes = buffer.subarray(0, 16)
+
+    const validationError = validateUploadedFile(file, sniffBytes, { rejectMimeMismatch: true })
+    if (validationError) {
+      const isMimeError = validationError.includes("unsupported format") || validationError.includes("MIME type")
+      return NextResponse.json({ error: validationError }, { status: isMimeError ? 415 : 400 })
+    }
+
+    const detectedMime = detectMimeType(sniffBytes)
+    if (!detectedMime) {
+      return NextResponse.json({ error: "Unsupported file format." }, { status: 415 })
+    }
+
+    const extension = extensionFromDetectedMime(detectedMime)
+    const storageFilename = `upload${extension}`
+    const relativeFilePath = unsortedFilePath(fileUuid, storageFilename)
     const fullFilePath = safePathJoin(userUploadsDirectory, relativeFilePath)
 
     await mkdir(path.dirname(fullFilePath), { recursive: true })
+    await writeFile(fullFilePath, buffer)
 
-    const arrayBuffer = await file.arrayBuffer()
-    await writeFile(fullFilePath, Buffer.from(arrayBuffer))
+    try {
+      const fileRecord = await createFile(user.id, {
+        id: fileUuid,
+        filename: file.name,
+        path: relativeFilePath,
+        mimetype: detectedMime,
+        clientMimetype: file.type || null,
+        detectedMimetype: detectedMime,
+        metadata: {
+          size: file.size,
+          uploadedVia: "agent-api",
+          clientMime: file.type || null,
+          detectedMime,
+          mimeMismatch: Boolean(file.type && file.type !== detectedMime),
+        },
+      })
 
-    const fileRecord = await createFile(user.id, {
-      id: fileUuid,
-      filename: file.name,
-      path: relativeFilePath,
-      mimetype: file.type,
-      metadata: {
-        size: file.size,
-        uploadedVia: "agent-api",
-      },
-    })
-
-    return NextResponse.json(
-      { fileId: fileRecord.id, filename: fileRecord.filename },
-      { status: 201 }
-    )
+      return NextResponse.json(
+        { fileId: fileRecord.id, filename: fileRecord.filename },
+        { status: 201 }
+      )
+    } catch (dbError) {
+      await unlink(fullFilePath).catch(() => undefined)
+      throw dbError
+    }
   } catch (error) {
     console.error("Agent API: file upload error:", error)
     return NextResponse.json(

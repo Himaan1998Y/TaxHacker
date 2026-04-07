@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { TransactionType } from "@/prisma/client"
 import { authenticateAgent } from "../../auth"
 import {
   getTransactionById,
@@ -56,12 +57,17 @@ export async function PATCH(
   }
 
   try {
+    const parsedType =
+      typeof body.type === "string" && Object.values(TransactionType).includes(body.type as TransactionType)
+        ? (body.type as TransactionType)
+        : undefined
+
     const transaction = await updateTransaction(id, user.id, {
       name: body.name as string | undefined,
       merchant: body.merchant as string | undefined,
       total: body.total != null ? Number(body.total) : undefined,
       currencyCode: body.currencyCode as string | undefined,
-      type: body.type as string | undefined,
+      type: parsedType,
       categoryCode: body.categoryCode as string | undefined,
       projectCode: body.projectCode as string | undefined,
       issuedAt: body.issuedAt ? new Date(body.issuedAt as string) : undefined,

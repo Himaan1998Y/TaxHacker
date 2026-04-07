@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth"
 import { generateGSTR1Report } from "@/lib/gstr1"
+import { getGSTRPeriodDates, validateGSTRPeriod } from "@/lib/indian-fy"
 import { getSettings } from "@/models/settings"
 import { getTransactions } from "@/models/transactions"
 import { format } from "@fast-csv/format"
@@ -16,8 +17,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "month and year required" }, { status: 400 })
   }
 
-  const month = parseInt(monthStr) - 1 // 0-indexed for Date
-  const year = parseInt(yearStr)
+  const filingPeriod = `${monthStr.padStart(2, "0")}${yearStr}`
+  const validation = validateGSTRPeriod(filingPeriod)
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error || "Invalid period" }, { status: 400 })
+  }
 
   const user = await getCurrentUser()
   const settings = await getSettings(user.id)
@@ -25,8 +29,7 @@ export async function GET(request: Request) {
   const businessGSTIN = settings.business_gstin || "DRAFT"
 
   // Fetch transactions for the period
-  const startDate = new Date(year, month, 1)
-  const endDate = new Date(year, month + 1, 0) // last day of month
+  const { start: startDate, end: endDate } = getGSTRPeriodDates(filingPeriod)
 
   const { transactions } = await getTransactions(user.id, {
     dateFrom: startDate.toISOString(),
@@ -38,7 +41,6 @@ export async function GET(request: Request) {
 
   // Build ZIP with CSVs
   const zip = new JSZip()
-  const filingPeriod = `${monthStr.padStart(2, "0")}${year}`
 
   // B2B CSV
   if (report.b2b.length > 0) {
@@ -134,17 +136,93 @@ export async function GET(request: Request) {
        "Exempted (Inter-State)", "Exempted (Intra-State)"],
       report.nil.map(entry => [
         entry.description,
-        entry.nilRatedInter,
-        entry.nilRatedIntra,
-        entry.exemptedInter,
-        entry.exemptedIntra,
+        entry.nilRatedInterB2B + entry.nilRatedInterB2C,
+        entry.nilRatedIntraB2B + entry.nilRatedIntraB2C,
+        entry.exemptedInterB2B + entry.exemptedInterB2C,
+        entry.exemptedIntraB2B + entry.exemptedIntraB2C,
       ])
     )
     zip.file("nil_exempt.csv", csv)
   }
 
+  // CDNR CSV
+  if (report.cdnr.length > 0) {
+    const csv = await generateCSV(
+      ["GSTIN", "Note Number", "Note Date", "Note Type", "Note Value", "Place of Supply", "Reverse Charge", "Rate", "Taxable Value", "IGST", "CGST", "SGST", "Cess"],
+      report.cdnr.map(entry => [
+        entry.gstin,
+        entry.noteNumber,
+        entry.noteDate,
+        entry.noteType,
+        entry.noteValue,
+        entry.placeOfSupply,
+        entry.reverseCharge,
+        entry.rate,
+        entry.taxableValue,
+        entry.igst,
+        entry.cgst,
+        entry.sgst,
+        entry.cess,
+      ])
+    )
+    zip.file("cdnr.csv", csv)
+  }
+
+  // CDNUR CSV
+  if (report.cdnur.length > 0) {
+    const csv = await generateCSV(
+      ["Note Number", "Note Date", "Note Type", "Note Value", "Place of Supply", "Rate", "Taxable Value", "IGST", "Cess"],
+      report.cdnur.map(entry => [
+        entry.noteNumber,
+        entry.noteDate,
+        entry.noteType,
+        entry.noteValue,
+        entry.placeOfSupply,
+        entry.rate,
+        entry.taxableValue,
+        entry.igst,
+        entry.cess,
+      ])
+    )
+    zip.file("cdnur.csv", csv)
+  }
+
+  // AT CSV
+  if (report.at.length > 0) {
+    const csv = await generateCSV(
+      ["Place of Supply", "Rate", "Gross Advance Received", "IGST", "CGST", "SGST", "Cess"],
+      report.at.map(entry => [
+        entry.placeOfSupply,
+        entry.rate,
+        entry.grossAdvanceReceived,
+        entry.igst,
+        entry.cgst,
+        entry.sgst,
+        entry.cess,
+      ])
+    )
+    zip.file("at.csv", csv)
+  }
+
+  // ATADJ CSV
+  if (report.atadj.length > 0) {
+    const csv = await generateCSV(
+      ["Place of Supply", "Rate", "Gross Advance Received", "IGST", "CGST", "SGST", "Cess"],
+      report.atadj.map(entry => [
+        entry.placeOfSupply,
+        entry.rate,
+        entry.grossAdvanceReceived,
+        entry.igst,
+        entry.cgst,
+        entry.sgst,
+        entry.cess,
+      ])
+    )
+    zip.file("atadj.csv", csv)
+  }
+
   // Summary CSV
-  const summaryRows = (["b2b", "b2cl", "b2cs", "exp", "nil", "exempt"] as const).map(section => {
+  const summaryRows = (["b2b", "b2cl", "b2cs", "cdnr", "cdnur", "at", "atadj", "exp", "nil", "exempt"] as const).map(section => {
     const data = report.sectionCounts[section]
     return [section.toUpperCase(), data.count, data.value, data.warnings]
   })
@@ -154,10 +232,25 @@ export async function GET(request: Request) {
   )
   zip.file("summary.csv", summaryCSV)
 
-  // Generate ZIP
-  const zipBuffer = await zip.generateAsync({ type: "nodebuffer" })
+  if (report.totalWarnings > 0) {
+    const warningLines = [
+      "Transaction ID,Section,Invoice Number,Warnings",
+      ...report.classified
+        .filter(tx => tx.warnings.length > 0)
+        .map(tx => [
+          tx.id,
+          tx.section,
+          tx.invoiceNumber || "N/A",
+          tx.warnings.join("; "),
+        ].map(value => String(value).replace(/\r?\n/g, " ")).join(",")),
+    ]
+    zip.file("warnings_summary.txt", warningLines.join("\r\n"))
+  }
 
-  return new NextResponse(zipBuffer, {
+  // Generate ZIP
+  const zipBuffer = await zip.generateAsync({ type: "uint8array" })
+
+  return new NextResponse(Uint8Array.from(zipBuffer).buffer, {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="GSTR1_${businessGSTIN}_${filingPeriod}.zip"`,

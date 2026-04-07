@@ -1,0 +1,157 @@
+ ⚠ Compiled with warnings in 3.3min
+
+./node_modules/.pnpm/require-in-the-middle@7.5.2/node_modules/require-in-the-middle/index.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+./node_modules/.pnpm/require-in-the-middle@7.5.2/node_modules/require-in-the-middle/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/index.js
+./node_modules/.pnpm/@sentry+node@9.47.1/node_modules/@sentry/node/build/cjs/integrations/tracing/postgresjs.js
+./node_modules/.pnpm/@sentry+node@9.47.1/node_modules/@sentry/node/build/cjs/index.js
+./node_modules/.pnpm/@sentry+nextjs@9.47.1_@open_0968aa9aea403630a6b31e150edb1de8/node_modules/@sentry/nextjs/build/cjs/index.server.js
+./app/global-error.tsx
+
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/index.js
+./node_modules/.pnpm/@sentry+node@9.47.1/node_modules/@sentry/node/build/cjs/integrations/tracing/postgresjs.js
+./node_modules/.pnpm/@sentry+node@9.47.1/node_modules/@sentry/node/build/cjs/index.js
+./node_modules/.pnpm/@sentry+nextjs@9.47.1_@open_0968aa9aea403630a6b31e150edb1de8/node_modules/@sentry/nextjs/build/cjs/index.server.js
+
+./node_modules/.pnpm/require-in-the-middle@7.5.2/node_modules/require-in-the-middle/index.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+./node_modules/.pnpm/require-in-the-middle@7.5.2/node_modules/require-in-the-middle/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+./node_modules/.pnpm/@opentelemetry+instrumentat_91c8d81e8ff5cdaf602b4d4bf87f5e08/node_modules/@opentelemetry/instrumentation/build/esm/index.js
+./node_modules/.pnpm/@sentry+node@9.47.1/node_modules/@sentry/node/build/cjs/integrations/tracing/postgresjs.js
+./node_modules/.pnpm/@sentry+node@9.47.1/node_modules/@sentry/node/build/cjs/index.js
+./node_modules/.pnpm/@sentry+nextjs@9.47.1_@open_0968aa9aea403630a6b31e150edb1de8/node_modules/@sentry/nextjs/build/cjs/index.server.js
+
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (128kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ⚠ Compiled with warnings in 11.3s
+
+./lib/self-hosted-auth.ts
+A Node.js module is loaded ('crypto' at line 2) which is not supported in the Edge Runtime.
+Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+
+Import trace for requested module:
+./lib/self-hosted-auth.ts
+
+./node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
+A Node.js module is loaded ('crypto' at line 32) which is not supported in the Edge Runtime.
+Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+
+Import trace for requested module:
+./node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
+./lib/self-hosted-auth.ts
+
+./node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
+A Node.js API is used (setImmediate at line: 335) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
+./lib/self-hosted-auth.ts
+
+./node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
+A Node.js API is used (setImmediate at line: 336) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
+./lib/self-hosted-auth.ts
+
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/lib/deflate.js
+A Node.js API is used (CompressionStream at line: 10) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/lib/deflate.js
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/jwe/flattened/decrypt.js
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/index.js
+./node_modules/.pnpm/better-auth@1.5.6_@opentele_fdf887c5e39710bf2c6fe97944781cec/node_modules/better-auth/dist/crypto/jwt.mjs
+./node_modules/.pnpm/better-auth@1.5.6_@opentele_fdf887c5e39710bf2c6fe97944781cec/node_modules/better-auth/dist/cookies/index.mjs
+
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/lib/deflate.js
+A Node.js API is used (DecompressionStream at line: 26) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/lib/deflate.js
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/jwe/flattened/decrypt.js
+./node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/index.js
+./node_modules/.pnpm/better-auth@1.5.6_@opentele_fdf887c5e39710bf2c6fe97944781cec/node_modules/better-auth/dist/crypto/jwt.mjs
+./node_modules/.pnpm/better-auth@1.5.6_@opentele_fdf887c5e39710bf2c6fe97944781cec/node_modules/better-auth/dist/cookies/index.mjs
+
+Error: [STARTUP ERROR] ENCRYPTION_KEY is required in production. Generate with: openssl rand -hex 32
+    at 33547 (F:\TaxHacker\.next\server\chunks\3670.js:1:1414)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 90487 (F:\TaxHacker\.next\server\app\(app)\apps\gstr1\export\route.js:1:5956)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 93150 (F:\TaxHacker\.next\server\app\(app)\apps\gstr1\export\route.js:32:2594)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\apps\gstr1\export\route.js:32:13224)
+    at c.X (F:\TaxHacker\.next\server\webpack-runtime.js:1:2210)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\apps\gstr1\export\route.js:32:13145)
+    at Object.<anonymous> (F:\TaxHacker\.next\server\app\(app)\apps\gstr1\export\route.js:32:13256)
+Error: [STARTUP ERROR] ENCRYPTION_KEY is required in production. Generate with: openssl rand -hex 32
+    at 33547 (F:\TaxHacker\.next\server\chunks\3670.js:1:1414)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 90487 (F:\TaxHacker\.next\server\app\(app)\files\preview\[fileId]\route.js:1:10770)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 90106 (F:\TaxHacker\.next\server\app\(app)\files\preview\[fileId]\route.js:1:4464)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\files\preview\[fileId]\route.js:32:3292)
+    at c.X (F:\TaxHacker\.next\server\webpack-runtime.js:1:2210)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\files\preview\[fileId]\route.js:32:3227)
+    at Object.<anonymous> (F:\TaxHacker\.next\server\app\(app)\files\preview\[fileId]\route.js:32:3324)
+Error: [STARTUP ERROR] ENCRYPTION_KEY is required in production. Generate with: openssl rand -hex 32
+    at 33547 (F:\TaxHacker\.next\server\chunks\3670.js:1:1414)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 90487 (F:\TaxHacker\.next\server\app\(app)\files\download\[fileId]\route.js:2:4937)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 2647 (F:\TaxHacker\.next\server\app\(app)\files\download\[fileId]\route.js:1:923)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\files\download\[fileId]\route.js:33:3248)
+    at c.X (F:\TaxHacker\.next\server\webpack-runtime.js:1:2210)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\files\download\[fileId]\route.js:33:3188)
+    at Object.<anonymous> (F:\TaxHacker\.next\server\app\(app)\files\download\[fileId]\route.js:33:3279)
+Error: [STARTUP ERROR] ENCRYPTION_KEY is required in production. Generate with: openssl rand -hex 32
+    at 33547 (F:\TaxHacker\.next\server\chunks\3670.js:1:1414)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 90487 (F:\TaxHacker\.next\server\app\(app)\export\transactions\route.js:1:14341)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 20350 (F:\TaxHacker\.next\server\app\(app)\export\transactions\route.js:1:1883)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\export\transactions\route.js:32:3298)
+    at c.X (F:\TaxHacker\.next\server\webpack-runtime.js:1:2210)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\export\transactions\route.js:32:3224)
+    at Object.<anonymous> (F:\TaxHacker\.next\server\app\(app)\export\transactions\route.js:32:3330)
+Error: [STARTUP ERROR] ENCRYPTION_KEY is required in production. Generate with: openssl rand -hex 32
+    at 33547 (F:\TaxHacker\.next\server\chunks\3670.js:1:1414)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 90487 (F:\TaxHacker\.next\server\app\(app)\export\tally\route.js:34:4937)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at 11438 (F:\TaxHacker\.next\server\app\(app)\export\tally\route.js:1:684)
+    at c (F:\TaxHacker\.next\server\webpack-runtime.js:1:143)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\export\tally\route.js:65:3254)
+    at c.X (F:\TaxHacker\.next\server\webpack-runtime.js:1:2210)
+    at <unknown> (F:\TaxHacker\.next\server\app\(app)\export\tally\route.js:65:3185)
+    at Object.<anonymous> (F:\TaxHacker\.next\server\app\(app)\export\tally\route.js:65:3286)
+
+> Build error occurred
+[Error: Failed to collect page data for /apps/gstr1/export] {
+  type: 'Error'
+}

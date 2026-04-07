@@ -19,6 +19,7 @@
       }
     ],
     "paths": {
+      "@/prisma/client": ["./lib/prisma-client.ts"],
       "@/*": ["./*"]
     }
   },

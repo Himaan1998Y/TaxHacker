@@ -1,11 +1,19 @@
 "use server"
 
+import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { DEFAULT_CATEGORIES, DEFAULT_CURRENCIES, DEFAULT_FIELDS, DEFAULT_SETTINGS } from "@/models/defaults"
-import { User } from "@/prisma/client"
 import { redirect } from "next/navigation"
 
-export async function resetLLMSettings(user: User) {
+export async function resetLLMSettings() {
+  // SECURITY: Use getCurrentUser() — never trust a caller-supplied user.
+  // Previously took (user: User) which allowed any authenticated user to
+  // reset another user's settings by passing a fabricated user.id.
+  const user = await getCurrentUser()
+  if (!user) {
+    throw new Error("Unauthorized")
+  }
+
   const llmSettings = DEFAULT_SETTINGS.filter((setting) => setting.code === "prompt_analyse_new_file")
 
   for (const setting of llmSettings) {
@@ -19,7 +27,14 @@ export async function resetLLMSettings(user: User) {
   redirect("/settings/llm")
 }
 
-export async function resetFieldsAndCategories(user: User) {
+export async function resetFieldsAndCategories() {
+  // SECURITY: Use getCurrentUser() — never trust a caller-supplied user.
+  // See resetLLMSettings() above for the same fix.
+  const user = await getCurrentUser()
+  if (!user) {
+    throw new Error("Unauthorized")
+  }
+
   // Reset categories
   for (const category of DEFAULT_CATEGORIES) {
     await prisma.category.upsert({

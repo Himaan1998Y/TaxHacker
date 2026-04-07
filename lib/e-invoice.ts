@@ -2,11 +2,11 @@ import QRCode from "qrcode"
 import { Transaction } from "@/prisma/client"
 
 /**
- * Generate e-Invoice QR code per GST IRP specification.
- * QR content: Supplier GSTIN | Supplier Name | Invoice No | Invoice Date | Invoice Value | Item Count | HSN | IRN
- * Minimum size: 290x290px per IRP spec.
+ * Generate invoice reference QR code.
+ * QR content: Supplier GSTIN | Supplier Name | Invoice No | Invoice Date | Invoice Value | Item Count | HSN | IRN | Payment Details
+ * Minimum size: 290x290px.
  */
-export async function generateEInvoiceQR(
+export async function generateInvoiceReferenceQR(
   transaction: Transaction & { extra?: Record<string, unknown> | null },
   businessGstin: string,
   businessName: string
@@ -15,6 +15,7 @@ export async function generateEInvoiceQR(
   const invoiceNumber = (extra.invoice_number as string) ?? ""
   const hsn = (extra.hsn_sac_code as string) ?? ""
   const irn = (extra.irn as string) ?? ""
+  const paymentDetails = `${(extra.payment_details as string) ?? (extra.upi_id as string) ?? ""}`.replace(/\s+/g, " ").trim()
 
   // Only generate QR if we have GSTIN and basic invoice data
   if (!businessGstin || !invoiceNumber) return null
@@ -30,7 +31,7 @@ export async function generateEInvoiceQR(
   // Amount in rupees (stored as integer paise in DB)
   const invoiceValue = transaction.total != null ? (transaction.total / 100).toFixed(2) : "0.00"
 
-  // IRP QR content format (pipe-separated)
+  // Invoice reference QR content format (pipe-separated)
   const qrContent = [
     businessGstin,
     businessName,
@@ -40,6 +41,7 @@ export async function generateEInvoiceQR(
     "1", // number of items (simplified)
     hsn,
     irn,
+    paymentDetails,
   ].join("|")
 
   try {
@@ -55,10 +57,12 @@ export async function generateEInvoiceQR(
   }
 }
 
+export const generateEInvoiceQR = generateInvoiceReferenceQR
+
 /**
- * Check if a transaction has enough data to generate a valid e-Invoice QR.
+ * Check if a transaction has enough data to generate a valid invoice reference QR.
  */
-export function canGenerateEInvoiceQR(
+export function canGenerateInvoiceReferenceQR(
   transaction: Transaction & { extra?: Record<string, unknown> | null },
   businessGstin: string
 ): boolean {
@@ -66,11 +70,13 @@ export function canGenerateEInvoiceQR(
   return !!(businessGstin && extra.invoice_number)
 }
 
+export const canGenerateEInvoiceQR = canGenerateInvoiceReferenceQR
+
 /**
- * Generate e-Invoice QR code from raw invoice fields (for use in the invoice generator).
+ * Generate invoice reference QR code from raw invoice fields (for use in the invoice generator).
  * businessGstin and invoiceNumber are required; all other fields are optional.
  */
-export async function generateEInvoiceQRFromFields({
+export async function generateInvoiceReferenceQRFromFields({
   businessGstin,
   businessName,
   invoiceNumber,
@@ -78,6 +84,7 @@ export async function generateEInvoiceQRFromFields({
   invoiceValue,
   hsn,
   irn,
+  paymentDetails,
 }: {
   businessGstin: string
   businessName: string
@@ -86,10 +93,23 @@ export async function generateEInvoiceQRFromFields({
   invoiceValue: string
   hsn: string
   irn: string
+  paymentDetails?: string
 }): Promise<string | null> {
   if (!businessGstin || !invoiceNumber) return null
 
-  const qrContent = [businessGstin, businessName, invoiceNumber, invoiceDate, invoiceValue, "1", hsn, irn].join("|")
+  const normalizedPaymentDetails = `${paymentDetails ?? ""}`.replace(/\s+/g, " ").trim()
+
+  const qrContent = [
+    businessGstin,
+    businessName,
+    invoiceNumber,
+    invoiceDate,
+    invoiceValue,
+    "1",
+    hsn,
+    irn,
+    normalizedPaymentDetails,
+  ].join("|")
 
   try {
     const dataUrl = await QRCode.toDataURL(qrContent, {
@@ -103,3 +123,5 @@ export async function generateEInvoiceQRFromFields({
     return null
   }
 }
+
+export const generateEInvoiceQRFromFields = generateInvoiceReferenceQRFromFields

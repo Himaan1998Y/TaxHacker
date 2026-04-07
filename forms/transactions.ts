@@ -1,3 +1,4 @@
+import { TransactionType } from "@/prisma/client"
 import { z } from "zod"
 
 export const transactionFormSchema = z
@@ -5,7 +6,7 @@ export const transactionFormSchema = z
     name: z.string().max(128).optional(),
     merchant: z.string().max(128).optional(),
     description: z.string().max(256).optional(),
-    type: z.string().optional(),
+    type: z.nativeEnum(TransactionType).optional(),
     total: z
       .string()
       .optional()

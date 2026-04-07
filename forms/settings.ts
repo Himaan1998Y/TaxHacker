@@ -1,4 +1,6 @@
 import { randomHexColor } from "@/lib/utils"
+import { INDIAN_STATES } from "@/lib/indian-states"
+import { validateGSTIN } from "@/lib/indian-tax-utils"
 import { z } from "zod"
 
 export const settingsFormSchema = z.object({
@@ -18,9 +20,16 @@ export const settingsFormSchema = z.object({
   prompt_analyse_new_file: z.string().optional(),
   prompt_analyse_bank_statement: z.string().optional(),
   is_welcome_message_hidden: z.string().optional(),
-  business_gstin: z.string().max(15).optional(),
+  business_gstin: z.string().max(15).optional().refine((val) => {
+    if (!val) return true
+    return validateGSTIN(val).valid
+  }, { message: "Invalid GSTIN format or checksum" }),
   business_pan: z.string().max(10).optional(),
-  business_state_code: z.string().max(2).optional(),
+  business_state_code: z.string().max(2).optional().refine((val) => {
+    if (!val) return true
+    return INDIAN_STATES[val] !== undefined
+  }, { message: "Invalid state code" }),
+  business_bank_details: z.string().max(1024).optional(),
 })
 
 export const currencyFormSchema = z.object({

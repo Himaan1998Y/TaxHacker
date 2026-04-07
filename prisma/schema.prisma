@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "client"
 }
 
 datasource db {
@@ -12,8 +11,8 @@ datasource db {
 }
 
 model User {
-  id                  String        @id @default(uuid()) @db.Uuid
-  email               String        @unique
+  id                  String            @id @default(uuid()) @db.Uuid
+  email               String            @unique
   name                String
   avatar              String?
   settings            Setting[]
@@ -23,23 +22,24 @@ model User {
   files               File[]
   currencies          Currency[]
   transactions        Transaction[]
-  createdAt           DateTime      @default(now()) @map("created_at")
-  updatedAt           DateTime      @updatedAt @map("updated_at")
-  stripeCustomerId    String?       @map("stripe_customer_id")
-  membershipPlan      String?       @map("membership_plan")
-  membershipExpiresAt DateTime?     @map("membership_expires_at")
-  emailVerified       Boolean       @default(false) @map("is_email_verified")
-  storageUsed         BigInt        @default(0) @map("storage_used")
-  storageLimit        BigInt        @default(-1) @map("storage_limit")
-  aiBalance           Int           @default(0) @map("ai_balance")
-  businessName        String?       @map("business_name")
-  businessAddress     String?       @map("business_address")
-  businessBankDetails String?       @map("business_bank_details")
-  businessLogo        String?       @map("business_logo")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  stripeCustomerId    String?           @map("stripe_customer_id")
+  membershipPlan      String?           @map("membership_plan")
+  membershipExpiresAt DateTime?         @map("membership_expires_at")
+  emailVerified       Boolean           @default(false) @map("is_email_verified")
+  storageUsed         BigInt            @default(0) @map("storage_used")
+  storageLimit        BigInt            @default(-1) @map("storage_limit")
+  aiBalance           Int               @default(0) @map("ai_balance")
+  businessName        String?           @map("business_name")
+  businessAddress     String?           @map("business_address")
+  businessBankDetails String?           @map("business_bank_details")
+  businessLogo        String?           @map("business_logo")
   accounts            Account[]
   sessions            Session[]
   appData             AppData[]
   progress            Progress[]
+  transactionFiles    TransactionFile[]
 
   @@map("users")
 }
@@ -152,46 +152,75 @@ model Field {
 }
 
 model File {
-  id                String   @id @default(uuid()) @db.Uuid
-  userId            String   @map("user_id") @db.Uuid
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   filename          String
   path              String
   mimetype          String
+  clientMimetype    String?           @map("client_mimetype")
+  detectedMimetype  String?           @map("detected_mimetype")
   metadata          Json?
-  isReviewed        Boolean  @default(false) @map("is_reviewed")
-  isSplitted        Boolean  @default(false) @map("is_splitted")
-  cachedParseResult Json?    @map("cached_parse_result")
-  createdAt         DateTime @default(now()) @map("created_at")
+  isReviewed        Boolean           @default(false) @map("is_reviewed")
+  isSplitted        Boolean           @default(false) @map("is_splitted")
+  cachedParseResult Json?             @map("cached_parse_result")
+  transactionFiles  TransactionFile[]
+  createdAt         DateTime          @default(now()) @map("created_at")
 
+  @@index([userId, isReviewed], map: "files_user_reviewed_idx")
   @@map("files")
 }
 
+enum TransactionType {
+  income
+  expense
+  pending
+  other
+}
+
+enum TransactionStatus {
+  active
+  reversed
+}
+
 model Transaction {
-  id                    String    @id @default(uuid()) @db.Uuid
-  userId                String    @map("user_id") @db.Uuid
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String            @id @default(uuid()) @db.Uuid
+  userId                String            @map("user_id") @db.Uuid
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                  String?
   description           String?
   merchant              String?
   total                 Int?
-  currencyCode          String?   @map("currency_code")
-  convertedTotal        Int?      @map("converted_total")
-  convertedCurrencyCode String?   @map("converted_currency_code")
-  type                  String?   @default("expense")
-  items                 Json      @default("[]")
+  currencyCode          String?           @map("currency_code")
+  convertedTotal        Int?              @map("converted_total")
+  convertedCurrencyCode String?           @map("converted_currency_code")
+  type                  TransactionType?  @default(expense)
+  items                 Json              @default("[]")
   note                  String?
-  files                 Json      @default("[]")
+  files                 Json              @default("[]")
+  transactionFiles      TransactionFile[]
   extra                 Json?
-  category              Category? @relation(fields: [categoryCode, userId], references: [code, userId])
-  categoryCode          String?   @map("category_code")
-  project               Project?  @relation(fields: [projectCode, userId], references: [code, userId])
-  projectCode           String?   @map("project_code")
-  issuedAt              DateTime? @map("issued_at")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  gstRate               Float?            @map("gst_rate")
+  taxableAmount         Int?              @map("taxable_amount")
+  cgst                  Int?              @map("cgst")
+  sgst                  Int?              @map("sgst")
+  igst                  Int?              @map("igst")
+  cess                  Int?              @map("cess")
+  invoiceNumber         String?           @map("invoice_number")
+  gstin                 String?           @map("gstin")
+  hsnCode               String?           @map("hsn_code")
+  placeOfSupply         String?           @map("place_of_supply")
+  supplyType            String?           @map("supply_type")
+  reverseCharge         Boolean           @default(false) @map("reverse_charge")
+  category              Category?         @relation(fields: [categoryCode, userId], references: [code, userId])
+  categoryCode          String?           @map("category_code")
+  project               Project?          @relation(fields: [projectCode, userId], references: [code, userId])
+  projectCode           String?           @map("project_code")
+  issuedAt              DateTime?         @map("issued_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
   text                  String?
-  status                String    @default("active")
+  status                TransactionStatus @default(active)
 
   @@index([userId])
   @@index([status])
@@ -201,7 +230,24 @@ model Transaction {
   @@index([name])
   @@index([merchant])
   @@index([total])
+  @@index([files], type: Gin, map: "transactions_files_gin_idx")
   @@map("transactions")
+}
+
+model TransactionFile {
+  id            String      @id @default(uuid()) @db.Uuid
+  transactionId String      @map("transaction_id") @db.Uuid
+  fileId        String      @map("file_id") @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  file          File        @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@unique([transactionId, fileId])
+  @@index([userId])
+  @@index([transactionId])
+  @@map("transaction_files")
 }
 
 model Currency {

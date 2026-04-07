@@ -8,6 +8,7 @@ export type SecurityEvent =
   | "file.deleted"
   | "agent.api_call"
   | "agent.key_rejected"
+  | "agent.setup_failed"
   | "settings.api_key_changed"
   | "export.data_downloaded"
 

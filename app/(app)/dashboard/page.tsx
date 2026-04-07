@@ -12,20 +12,31 @@ import { getUnsortedFiles } from "@/models/files"
 import { getSettings } from "@/models/settings"
 import { TransactionFilters } from "@/models/transactions"
 import { Metadata } from "next"
+import { Suspense } from "react"
 
 export const metadata: Metadata = {
   title: "Dashboard",
   description: config.app.description,
 }
 
+// Simple placeholder card matching the rough footprint of the widgets
+// so the page doesn't reflow when they stream in.
+function WidgetSkeleton({ height = "h-40" }: { height?: string }) {
+  return <div className={`w-full rounded-lg border bg-muted/30 animate-pulse ${height}`} />
+}
+
 export default async function Dashboard({ searchParams }: { searchParams: Promise<TransactionFilters> }) {
   const filters = await searchParams
   const user = await getCurrentUser()
-  const unsortedFiles = await getUnsortedFiles(user.id)
-  const settings = await getSettings(user.id)
 
-  // Compute onboarding steps via shared helper
-  const onboardingStatus = await getOnboardingStatus(user.id)
+  // PERFORMANCE: Fetch the above-the-fold widgets' data in parallel
+  // instead of awaiting each call serially (the old code made three
+  // sequential round-trips before rendering anything).
+  const [unsortedFiles, settings, onboardingStatus] = await Promise.all([
+    getUnsortedFiles(user.id),
+    getSettings(user.id),
+    getOnboardingStatus(user.id),
+  ])
 
   const onboardingSteps = [
     { id: "api_key", label: "Set up an AI API key", done: onboardingStatus.hasApiKey, href: "/settings/llm" },
@@ -61,9 +72,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
       <Separator />
 
-      <StatsWidget filters={filters} />
+      {/*
+        PERFORMANCE: Each widget streams independently via Suspense.
+        The above-the-fold content renders immediately (~200ms) and
+        the heavier aggregation queries (stats, GST summary) are
+        hydrated as they complete instead of blocking the whole page.
+      */}
+      <Suspense fallback={<WidgetSkeleton height="h-48" />}>
+        <StatsWidget filters={filters} />
+      </Suspense>
 
-      <GSTSummaryWidget filters={filters} />
+      <Suspense fallback={<WidgetSkeleton height="h-32" />}>
+        <GSTSummaryWidget filters={filters} />
+      </Suspense>
     </div>
   )
 }

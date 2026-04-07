@@ -1,0 +1,260 @@
+================================================================================
+                        TAXHACKER INDIA — VISUAL ROADMAP
+                  What We Have | What's Pending | Path to ₹1L/month
+================================================================================
+
+                               TODAY (Apr 7, 2026)
+
+                              ┌─────────────────┐
+                              │  TaxHacker 85%  │
+                              │  What We Built: │
+                              │  ✅ Receipt OCR │
+                              │  ✅ AI extract  │
+                              │  ✅ GSTR-1 gen  │
+                              │  ✅ Agent API   │
+                              │  ✅ pgvector    │
+                              │  ✅ Auth + rate │
+                              │  ⚠️  No audit   │
+                              │  ⚠️  No encrypt │
+                              └─────────────────┘
+                                      │
+                    ┌───────────────────┼───────────────────┐
+                    │                   │                   │
+                    ▼                   ▼                   ▼
+           ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+           │ OPTION A     │    │ OPTION B     │    │ OPTION C     │
+           │ SAFE ROUTE   │    │ FAST ROUTE   │    │ HYBRID       │
+           │ (Recommended)│    │ (Risky)      │    │ (Balanced)   │
+           │              │    │              │    │              │
+           │ Week 1:      │    │ Mon:         │    │ Mon-Wed:     │
+           │ Phase 0      │    │ Deploy       │    │ Audit+Crypt  │
+           │ (4-5 days)   │    │ (risky)      │    │ (2-3 days)   │
+           │              │    │              │    │              │
+           │ Week 2:      │    │ Week 1:      │    │ Thu-Fri:     │
+           │ Deploy       │    │ Fix Phase 0  │    │ Deploy       │
+           │ (2 days)     │    │ (catch up)   │    │              │
+           │              │    │              │    │ Week 2:      │
+           │ REVENUE:     │    │ REVENUE:     │    │ Polish       │
+           │ ₹5K Mon 14   │    │ ₹5K Mon 8    │    │              │
+           │              │    │              │    │ REVENUE:     │
+           │ LEGAL RISK:  │    │ LEGAL RISK:  │    │ ₹5K Mon 11   │
+           │ ZERO         │    │ HIGH until   │    │              │
+           │              │    │ phase 0 done │    │ LEGAL RISK:  │
+           │              │    │              │    │ LOW          │
+           └──────────────┘    └──────────────┘    └──────────────┘
+
+================================================================================
+                        PHASE 0: LEGAL FOUNDATION (1 Week)
+                      ⚠️  BLOCKS EVERYTHING UNTIL DONE ⚠️
+================================================================================
+
+  Mon-Tue: AUDIT TRAIL (2-3 days)
+  ┌────────────────────────────────────────────────────────────────┐
+  │ Creates immutable log of ALL changes (Companies Act requirement)│
+  │ Table: audit_logs(id, user_id, entity_type, action, old, new) │
+  │ Hook into: createTransaction, updateTransaction, deleteTransaction
+  │ Status: ❌ NOT IMPLEMENTED → 🔜 2-3 days to ship
+  │ Penalty if skipped: ₹5L fine + imprisonment
+  └────────────────────────────────────────────────────────────────┘
+
+  Tue-Wed: ENCRYPTION AT REST (1-2 days)
+  ┌────────────────────────────────────────────────────────────────┐
+  │ Encrypts sensitive data: API keys, bank details (DPDP Act req) │
+  │ Tech: AES-256-GCM with per-message IV + auth tag              │
+  │ Apply to: settings.value (API keys), User.businessBankDetails │
+  │ Status: ❌ NOT IMPLEMENTED → 🔜 1-2 days to ship
+  │ Penalty if skipped: ₹250Cr fine + criminal prosecution
+  └────────────────────────────────────────────────────────────────┘
+
+  Wed-Thu: PRIVACY + CONSENT (0.5-1 day)
+  ┌────────────────────────────────────────────────────────────────┐
+  │ Privacy policy + first-login consent modal (DPDP Act)          │
+  │ Show: "Your data stored on [location]. AI sends to [LLM]. OK?" │
+  │ Status: ⚠️  PARTIAL → 🔜 0.5 days to complete
+  │ Penalty if skipped: ₹200Cr fine
+  └────────────────────────────────────────────────────────────────┘
+
+  Thu-Fri: INCIDENT RESPONSE PLAN (0.5 day)
+  ┌────────────────────────────────────────────────────────────────┐
+  │ Document: Who to call, 6-hour CERT-In report requirement       │
+  │ Also: Data retention policy (8-year Companies Act mandate)      │
+  │ Status: ❌ NOT DOCUMENTED → 🔜 0.5 days
+  │ Penalty if skipped: CERT-In non-compliance (criminal)
+  └────────────────────────────────────────────────────────────────┘
+
+  Total Phase 0: 4-5 days
+  Blocker Status: 🔴 CRITICAL — Cannot ship with real users until DONE
+
+================================================================================
+                      PHASE 1: SECURITY HARDENING (Week 2)
+                    Nice to have, but do before 2nd customer
+================================================================================
+
+  Days 1-2: Rate limiting + CSRF tokens (3-4 days total)
+  - Verify rate limits on all endpoints (DDoS protection)
+  - Add CSRF tokens to state-changing forms
+  - Verify SQL injection prevention (Prisma ORM helps)
+  - Add XSS hardening (React auto-escapes, but review)
+
+  Status: ⚠️  PARTIAL (rate limiting exists, rest TBD)
+  Blocker Status: 🟡 NOT BLOCKING (deploy without, fix day 1 after)
+
+================================================================================
+                      WEEK 3: DEPLOY TO LODHI REALTY
+================================================================================
+
+  Monday Apr 14:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ 1. Deploy to taxhacker-lodhi.lodhirealestatebuildwell.in        │
+  │ 2. Run Prisma migrations (audit trail + encryption setup)       │
+  │ 3. Test with 10 real Lodhi invoices (target: >80% accuracy)     │
+  │ 4. Generate GSTR-1 report, verify correct                       │
+  │ 5. Show Adi demo, get sign-off                                  │
+  │                                                                   │
+  │ Status: ✅ READY TO SHIP (all pieces exist)
+  │ Time: 2-3 hours (database migration, testing)
+  │ Revenue impact: ₹0 (test phase)
+  └─────────────────────────────────────────────────────────────────┘
+
+  Friday Apr 18:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ FIRST INVOICE SENT: ₹5,000/month "TaxHacker Bookkeeping Service"│
+  │ - Unlimited invoice uploads                                      │
+  │ - AI extraction + human validation                              │
+  │ - Monthly GSTR-1 report by 25th                                 │
+  │ - 24-hour upload turnaround                                     │
+  │                                                                   │
+  │ Revenue: ₹5K/month begins                                       │
+  │ Status: 🎯 FIRST CUSTOMER ACQUIRED
+  └─────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    MONTH 2-4: SCALE TO ₹1L/MONTH
+================================================================================
+
+  Week 5-6: CLAW INTEGRATION (Phase 2)
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ What it is: WhatsApp bot → Talk to accountant in real-time      │
+  │ - "What's my March revenue?" → Instant answer with context      │
+  │ - Weekly digest emails                                           │
+  │ - Peer insights ("How do you compare to other builders?")       │
+  │                                                                   │
+  │ Impact: 10X UX improvement → Churn 5% → <2%                     │
+  │ Tech: nano-Claw (Vercel AI SDK) + Claude 3.5 Sonnet             │
+  │ Time: 5-7 days of focused work                                  │
+  │ Value: Every customer gets "always-on accountant" → word-of-mouth
+  │                                                                   │
+  │ MVP (Week 5): WhatsApp bot + 3 core tools                       │
+  │ Full (Week 7-8): Telegram + daily digest + peer insights        │
+  │ Voice (Week 8): Whisper input + Indic TTS output
+  └─────────────────────────────────────────────────────────────────┘
+
+  Week 7+: CUSTOMER ACQUISITION
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ Target: 1 customer/week referrals from Lodhi + cold outreach    │
+  │ Pitch: "AI bookkeeping service ₹5K/mo — handles your GST"       │
+  │                                                                   │
+  │ Timeline:                                                        │
+  │ Apr 14: Lodhi paying         = ₹5K/mo                          │
+  │ Apr 28: 2nd customer         = ₹10K/mo                         │
+  │ May 10: 3rd customer         = ₹15K/mo                         │
+  │ May 20: Hire 1st bookkeeper  = ₹15K cost, ₹25K revenue         │
+  │ Jun 10: 10 customers         = ₹50K/mo revenue, ₹30K cost       │
+  │ Jun 30: ₹1L/month target     = ₹60K-₹100K revenue              │
+  │                                                                   │
+  │ At 20 customers:                                                │
+  │ Revenue: ₹100K/month                                            │
+  │ Cost (4 bookkeepers): ₹60K/month                                │
+  │ Net profit: ₹40K/month (sustainable, hirable)
+  └─────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                       PATH TO 100X IMPACT (Month 5+)
+================================================================================
+
+  Long-term (Months 5-12):
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ 1. PUBLISH: @taxhacker/india-tax npm package (B2B moat)        │
+  │    - GSTR-1, GSTR-3B libraries no competitor has               │
+  │    - Accountants buy → ₹100/mo per CA firm                     │
+  │                                                                   │
+  │ 2. ENTERPRISE: NemoClaw wrapper for CA firms (multi-tenant)    │
+  │    - White-label TaxHacker for accountant practices            │
+  │    - Sandboxed multi-user (CA can onboard clients)             │
+  │    - ₹10K+/mo per CA firm                                      │
+  │                                                                   │
+  │ 3. VOICE: Add voice input + output (Indic TTS)                │
+  │    - "Hey TaxHacker, add this expense" → voice extraction      │
+  │    - Weekly digest in Hindi + Hinglish                         │
+  │                                                                   │
+  │ Vision: TaxHacker becomes the "Stripe of Indian accounting"
+  │ - Power 1000s of freelancers, SMEs, CAs                        │
+  │ - Generate 100+ hours of bookkeeper labor/month                │
+  │ - Sustainable, profitable, fully bootstrapped
+  └─────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                            FINAL DECISION TREE
+================================================================================
+
+                         "When do we ship?"
+                                │
+                  ┌─────────────┼─────────────┐
+                  │             │             │
+              "ASAP"         "Next       "Balanced"
+              (risky)        week"       (recommend)
+                │           (safe)          │
+                ▼             ▼             ▼
+            ┌─────────┐   ┌────────┐  ┌──────────┐
+            │OPTION B │   │OPTION A│  │OPTION C  │
+            │─────────│   │────────│  │──────────│
+            │Deploy   │   │Fix all │  │Fix core  │
+            │Monday   │   │first   │  │fix rest  │
+            │Fix      │   │Deploy  │  │later     │
+            │later    │   │safe    │  │          │
+            │         │   │        │  │          │
+            │Revenue: │   │Revenue:│  │Revenue:  │
+            │₹5K Mon8 │   │₹5K Mon14│  │₹5K Mon11 │
+            │         │   │        │  │          │
+            │Risk:💀  │   │Risk:🟢 │  │Risk:🟡  │
+            │Legal⚠️  │   │Safe ✅ │  │OK ✅     │
+            └─────────┘   └────────┘  └──────────┘
+
+                    MY RECOMMENDATION: OPTION C (HYBRID)
+                    Safe + Fast = Best of both worlds
+
+================================================================================
+                             FILES TO READ
+================================================================================
+
+1. EXECUTIVE_SUMMARY.md (15 min)
+   - What we have + what's missing
+   - Decision framework (Option A/B/C explained)
+   - Exact action items for next 7 days
+
+2. COMPLIANCE_AUDIT.md (30 min)
+   - What's blocking production (audit trail + encryption)
+   - Legal penalties (₹250Cr, imprisonment)
+   - How to fix each item step-by-step
+
+3. REVENUE_ROADMAP.md (30 min)
+   - Path to ₹1L/month revenue
+   - Customer acquisition (Lodhi → referrals)
+   - Pricing + margins (₹5K service, ₹2K margin/customer)
+
+4. CLAW_INTEGRATION_ARCHITECTURE.md (20 min)
+   - WhatsApp bot design (Phase 2)
+   - Tools + data flow + prompts
+   - Timeline: Week 5-8 (after revenue launched)
+
+5. NEXT_STEPS.md (5 min)
+   - Daily checklist for next 7 days
+   - What to do each day (Mon-Fri)
+   - Deployment steps (Week 2)
+
+================================================================================
+
+                   THE BET: Ship Monday. Real data by Friday.
+                         Revenue by April 18. 💰
+
+================================================================================

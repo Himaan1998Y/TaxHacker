@@ -1,12 +1,33 @@
 import config from "@/lib/config"
-import { hashSelfHostedToken } from "@/lib/self-hosted-auth"
+import { computeCookieToken, hashPassword, hashSelfHostedToken, timingSafeEqual, verifyPassword } from "@/lib/self-hosted-auth"
 import { logSecurityEvent } from "@/lib/security-log"
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 
+const SH_PASSWORD_HASH_KEY = "sh_password_hash"
+
 async function getSelfHostedUserId(): Promise<string> {
   const user = await prisma.user.findFirst({ where: { email: "taxhacker@localhost" }, select: { id: true } })
   return user?.id || "unknown"
+}
+
+async function getStoredBcryptHash(userId: string): Promise<string | null> {
+  if (userId === "unknown") return null
+  const setting = await prisma.setting.findUnique({
+    where: { userId_code: { userId, code: SH_PASSWORD_HASH_KEY } },
+    select: { value: true },
+  })
+  return setting?.value || null
+}
+
+async function storeBcryptHash(userId: string, password: string): Promise<void> {
+  if (userId === "unknown") return
+  const hash = await hashPassword(password)
+  await prisma.setting.upsert({
+    where: { userId_code: { userId, code: SH_PASSWORD_HASH_KEY } },
+    update: { value: hash },
+    create: { code: SH_PASSWORD_HASH_KEY, name: "Self-hosted password hash", value: hash, userId },
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -20,21 +41,41 @@ export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json()
 
-    if (password !== config.selfHosted.password) {
-      const userId = await getSelfHostedUserId()
+    if (typeof password !== "string" || password.length === 0) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
+
+    const userId = await getSelfHostedUserId()
+    const storedHash = await getStoredBcryptHash(userId)
+
+    let authenticated = false
+
+    if (storedHash) {
+      // ── Modern path: bcrypt comparison ──
+      authenticated = await verifyPassword(password, storedHash)
+    } else {
+      // ── Migration path: direct comparison against env var ──
+      // Falls through for first-login on existing deployments
+      authenticated = timingSafeEqual(password, config.selfHosted.password!)
+    }
+
+    if (!authenticated) {
       logSecurityEvent("auth.login_failed", userId, { reason: "wrong_password" }, ip, ua)
       return NextResponse.json({ error: "Invalid password" }, { status: 401 })
     }
 
-    const userId = await getSelfHostedUserId()
+    // On first successful login (no stored hash yet), migrate to bcrypt
+    if (!storedHash) {
+      await storeBcryptHash(userId, password)
+    }
+
     logSecurityEvent("auth.login_success", userId, {}, ip, ua)
 
     // Set auth cookie — httpOnly, 30 days
-    // Cookie stores a hash, never the raw password
-    const isSecure = request.headers.get("x-forwarded-proto") === "https"
-      || request.url.startsWith("https")
+    // Cookie stores HMAC token, not the raw password
+    const isSecure = request.headers.get("x-forwarded-proto") === "https" || request.url.startsWith("https")
     const response = NextResponse.json({ success: true })
-    response.cookies.set("taxhacker_sh_auth", hashSelfHostedToken(password), {
+    response.cookies.set("taxhacker_sh_auth", computeCookieToken(password), {
       httpOnly: true,
       secure: isSecure,
       sameSite: "lax",

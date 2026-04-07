@@ -1,0 +1,14 @@
+
+> taxhacker@0.5.5 build F:\TaxHacker
+> next build
+
+   ▲ Next.js 15.5.14
+   - Experiments (use with caution):
+     · serverActions
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 4.6min
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+ ELIFECYCLE  Command failed with exit code 1.

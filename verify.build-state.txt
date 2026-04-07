@@ -1,0 +1,61 @@
+RECENT_NODE_PIDS
+
+DOT_NEXT
+
+Name                            LastWriteTime
+----                            -------------
+cache                           05-04-2026 08:22:49 PM
+diagnostics                     05-04-2026 08:23:43 PM
+server                          05-04-2026 08:35:01 PM
+standalone                      05-04-2026 08:38:55 PM
+static                          05-04-2026 08:31:54 PM
+types                           05-04-2026 08:30:15 PM
+app-build-manifest.json         05-04-2026 08:31:52 PM
+app-path-routes-manifest.json   05-04-2026 08:34:53 PM
+BUILD_ID                        05-04-2026 08:35:01 PM
+build-manifest.json             05-04-2026 08:31:52 PM
+export-marker.json              05-04-2026 08:35:22 PM
+images-manifest.json            05-04-2026 08:35:22 PM
+next-minimal-server.js.nft.json 05-04-2026 08:36:52 PM
+next-server.js.nft.json         05-04-2026 08:36:52 PM
+package.json                    05-04-2026 08:23:43 PM
+prerender-manifest.json         05-04-2026 08:35:21 PM
+react-loadable-manifest.json    05-04-2026 08:31:52 PM
+required-server-files.json      05-04-2026 08:35:01 PM
+routes-manifest.json            05-04-2026 08:35:21 PM
+trace                           05-04-2026 08:38:58 PM
+
+
+BUILD_STDOUT
+
+> taxhacker@0.5.5 build F:\TaxHacker
+> next build
+
+   ▲ Next.js 15.5.14
+   - Experiments (use with caution):
+     · serverActions
+
+   Creating an optimized production build ...
+ ELIFECYCLE  Command failed with exit code 1.
+
+BUILD_STDERR
+glob error [Error: EPERM: operation not permitted, scandir 'C:\Users\Himanshu\Application Data'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'scandir',
+  path: 'C:\\Users\\Himanshu\\Application Data'
+}
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+[Error: EPERM: operation not permitted, scandir 'C:\Users\Himanshu\Application Data'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'scandir',
+  path: 'C:\\Users\\Himanshu\\Application Data'
+}
+
+Node.js v24.13.0
+Next.js build worker exited with code: 1 and signal: null
+

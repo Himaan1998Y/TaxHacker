@@ -8,10 +8,15 @@ export default async function BusinessSettingsPage() {
   const user = await getCurrentUser()
   const settings = await getSettings(user.id)
 
+  // SECURITY: Prefer encrypted `business_bank_details` from the Settings
+  // table over the legacy plaintext `User.businessBankDetails` column.
+  // getSettings() transparently decrypts sensitive entries.
+  const bankDetails = settings["business_bank_details"] || user.businessBankDetails || ""
+
   return (
     <>
       <div className="w-full max-w-2xl space-y-8">
-        <BusinessSettingsForm user={user} />
+        <BusinessSettingsForm user={user} bankDetails={bankDetails} />
 
         <Separator />
 

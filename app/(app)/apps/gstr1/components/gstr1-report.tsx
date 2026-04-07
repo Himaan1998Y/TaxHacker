@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { formatNumber } from "@/lib/utils"
+import { getIndianFY } from "@/lib/indian-fy"
 import {
   generateGSTR1Report,
   generateGSTR1JSON,
@@ -39,6 +40,10 @@ const SECTION_LABELS: Record<GSTR1Section, string> = {
   exp: "Export Supplies",
   nil: "Nil Rated Supplies",
   exempt: "Exempt Supplies",
+  cdnr: "CDNR — Credit/Debit Notes (Registered)",
+  cdnur: "CDNUR — Credit/Debit Notes (Unregistered)",
+  at: "AT — Advances Received",
+  atadj: "ATADJ — Advances Adjusted",
   skip: "Excluded (Expenses / Input)",
 }
 
@@ -52,6 +57,7 @@ export function GSTR1Report({ transactions, businessGSTIN, businessStateCode }: 
   const now = new Date()
   const [month, setMonth] = useState(String(now.getMonth())) // 0-indexed
   const [year, setYear] = useState(String(now.getFullYear()))
+  const fy = getIndianFY(new Date(Number(year), parseInt(month), 1))
 
   // Filter transactions for selected period
   const periodTransactions = useMemo(() => {
@@ -97,6 +103,7 @@ export function GSTR1Report({ transactions, businessGSTIN, businessStateCode }: 
   }
 
   const outwardCount = report.classified.filter(tx => tx.section !== "skip").length
+  const warningTransactions = report.classified.filter(tx => tx.warnings.length > 0)
 
   return (
     <div className="space-y-6">
@@ -108,6 +115,28 @@ export function GSTR1Report({ transactions, businessGSTIN, businessStateCode }: 
           This is a draft report for your CA&apos;s review.
         </div>
       </div>
+
+      {report.totalWarnings > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-sm text-amber-900 font-medium mb-3">
+            <AlertTriangle className="h-5 w-5" />
+            {report.totalWarnings} transactions have data quality issues. Review before filing.
+          </div>
+          <Collapsible>
+            <CollapsibleTrigger className="text-sm text-amber-700 underline underline-offset-2">
+              Show warning details
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 space-y-2 text-xs text-amber-800">
+              {warningTransactions.map((tx, index) => (
+                <div key={`${tx.id}-${index}`} className="rounded-md bg-amber-100 p-3">
+                  <div className="font-semibold">{tx.invoiceNumber || tx.id} — {tx.section.toUpperCase()}</div>
+                  <div className="mt-1">{tx.warnings.join("; ")}</div>
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      )}
 
       {/* Period selector + Export buttons */}
       <div className="flex flex-wrap items-center gap-4">
@@ -163,7 +192,7 @@ export function GSTR1Report({ transactions, businessGSTIN, businessStateCode }: 
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <IndianRupee className="h-4 w-4" />
-            GSTR-1 Summary — {MONTHS[parseInt(month)]} {year}
+            GSTR-1 Summary — {MONTHS[parseInt(month)]} {year} ({fy.year})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -175,7 +204,7 @@ export function GSTR1Report({ transactions, businessGSTIN, businessStateCode }: 
             </div>
           ) : (
             <div className="space-y-2">
-              {(["b2b", "b2cl", "b2cs", "nil", "exempt", "exp"] as GSTR1Section[]).map(section => {
+              {(["b2b", "b2cl", "b2cs", "cdnr", "cdnur", "at", "atadj", "nil", "exempt", "exp"] as GSTR1Section[]).map(section => {
                 const data = report.sectionCounts[section]
                 if (data.count === 0) return null
                 return (

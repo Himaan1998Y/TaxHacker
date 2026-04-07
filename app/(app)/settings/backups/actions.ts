@@ -40,33 +40,59 @@ export async function restoreBackupAction(
     const fileData = Buffer.from(fileBuffer)
     zip = await JSZip.loadAsync(fileData)
   } catch (error) {
-    return { success: false, error: "Bad zip archive: " + (error as Error).message }
+    console.error("[backups/restore] bad zip archive:", error)
+    return { success: false, error: "Could not read the backup file. It may be corrupted or not a valid ZIP archive." }
   }
 
   // Check metadata and start restoring
   try {
+    // ─── SAFETY: Validate EVERYTHING before any destructive operation ───
+    // Previously `cleanupUserTables` and `fs.rm` ran unconditionally before
+    // JSON parsing. A structurally valid ZIP with corrupt model JSON would
+    // wipe all user data with no possible recovery. Now we pre-parse every
+    // JSON file; only if validation succeeds do we touch the live data.
+
+    // 1. Validate metadata + version
     const metadataFile = zip.file("data/metadata.json")
     if (metadataFile) {
       const metadataContent = await metadataFile.async("string")
+      let metadata: { version?: string; timestamp?: string }
       try {
-        const metadata = JSON.parse(metadataContent)
-        if (!metadata.version || !SUPPORTED_BACKUP_VERSIONS.includes(metadata.version)) {
-          return {
-            success: false,
-            error: `Incompatible backup version: ${
-              metadata.version || "unknown"
-            }. Supported versions: ${SUPPORTED_BACKUP_VERSIONS.join(", ")}`,
-          }
-        }
-        console.log(`Restoring backup version ${metadata.version} created at ${metadata.timestamp}`)
-      } catch (error) {
-        console.warn("Could not parse backup metadata:", error)
+        metadata = JSON.parse(metadataContent)
+      } catch {
+        return { success: false, error: "Backup metadata.json is corrupt — aborting restore." }
       }
+      if (!metadata.version || !SUPPORTED_BACKUP_VERSIONS.includes(metadata.version)) {
+        return {
+          success: false,
+          error: `Incompatible backup version: ${
+            metadata.version || "unknown"
+          }. Supported versions: ${SUPPORTED_BACKUP_VERSIONS.join(", ")}`,
+        }
+      }
+      console.log(`Restoring backup version ${metadata.version} created at ${metadata.timestamp}`)
     } else {
       console.warn("No metadata found in backup, assuming legacy format")
     }
 
-    // Remove existing data
+    // 2. Pre-parse every model JSON file — no writes yet
+    const parsedBackups: Array<{ backup: (typeof MODEL_BACKUP)[number]; jsonContent: string }> = []
+    for (const backup of MODEL_BACKUP) {
+      const jsonFile = zip.file(`data/${backup.filename}`)
+      if (!jsonFile) continue
+      const jsonContent = await jsonFile.async("string")
+      try {
+        JSON.parse(jsonContent) // throws on corrupt JSON
+      } catch (error) {
+        return {
+          success: false,
+          error: `Backup file ${backup.filename} is corrupt (invalid JSON). Aborting restore — no data touched.`,
+        }
+      }
+      parsedBackups.push({ backup, jsonContent })
+    }
+
+    // 3. Validation passed — NOW it is safe to remove existing data
     if (REMOVE_EXISTING_DATA) {
       await cleanupUserTables(user.id)
       await fs.rm(userUploadsDirectory, { recursive: true, force: true })
@@ -74,18 +100,16 @@ export async function restoreBackupAction(
 
     const counters: Record<string, number> = {}
 
-    // Restore tables
-    for (const backup of MODEL_BACKUP) {
+    // 4. Restore each table. Individual row failures are tolerated so a
+    //    partial restore leaves the user with as much data as possible.
+    for (const { backup, jsonContent } of parsedBackups) {
       try {
-        const jsonFile = zip.file(`data/${backup.filename}`)
-        if (jsonFile) {
-          const jsonContent = await jsonFile.async("string")
-          const restoredCount = await modelFromJSON(user.id, backup, jsonContent)
-          console.log(`Restored ${restoredCount} records from ${backup.filename}`)
-          counters[backup.filename] = restoredCount
-        }
+        const restoredCount = await modelFromJSON(user.id, backup, jsonContent)
+        console.log(`Restored ${restoredCount} records from ${backup.filename}`)
+        counters[backup.filename] = restoredCount
       } catch (error) {
         console.error(`Error restoring model from ${backup.filename}:`, error)
+        counters[backup.filename] = 0
       }
     }
 
@@ -137,7 +161,7 @@ export async function restoreBackupAction(
       console.error("Error restoring uploaded files:", error)
       return {
         success: false,
-        error: `Error restoring uploaded files: ${error instanceof Error ? error.message : String(error)}`,
+        error: "Error restoring uploaded files. Check server logs for details.",
       }
     }
 
@@ -146,7 +170,7 @@ export async function restoreBackupAction(
     console.error("Error restoring from backup:", error)
     return {
       success: false,
-      error: `Error restoring from backup: ${error instanceof Error ? error.message : String(error)}`,
+      error: "Error restoring from backup. Check server logs for details.",
     }
   }
 }

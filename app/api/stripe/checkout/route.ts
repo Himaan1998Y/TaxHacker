@@ -38,13 +38,16 @@ export async function POST(request: NextRequest) {
     })
 
     if (!session.url) {
-      console.log(session)
-      return NextResponse.json({ error: `Failed to create checkout session: ${session}` }, { status: 500 })
+      // SECURITY: Log only safe identifiers server-side. Do not dump the
+      // full Stripe session object (leaks customer email, PII, metadata).
+      console.error("[stripe/checkout] session has no url", { id: session.id, status: session.status })
+      return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
     }
 
     return NextResponse.json({ session })
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: `Failed to create checkout session: ${error}` }, { status: 500 })
+    // SECURITY: Log detailed error server-side only; return generic message.
+    console.error("[stripe/checkout] error:", error)
+    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
   }
 }

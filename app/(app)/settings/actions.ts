@@ -22,6 +22,13 @@ import { Prisma, User } from "@/prisma/client"
 import { revalidatePath } from "next/cache"
 import path from "path"
 
+// Server-side logging utility (errors never exposed to client)
+function logServerError(context: string, error: unknown, userId?: string) {
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  const timestamp = new Date().toISOString()
+  console.error(`[${timestamp}] ${context}${userId ? ` (user: ${userId})` : ""}: ${errorMessage}`)
+}
+
 export async function saveSettingsAction(
   _prevState: ActionState<SettingsMap> | null,
   formData: FormData
@@ -30,7 +37,7 @@ export async function saveSettingsAction(
   const validatedForm = settingsFormSchema.safeParse(Object.fromEntries(formData))
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
   for (const key in validatedForm.data) {
@@ -52,7 +59,7 @@ export async function saveProfileAction(
   const validatedForm = userFormSchema.safeParse(Object.fromEntries(formData))
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
   // Upload avatar
@@ -63,7 +70,8 @@ export async function saveProfileAction(
       const uploadedAvatarPath = await uploadStaticImage(user, avatarFile, "avatar.webp", 500, 500)
       avatarUrl = `/files/static/${path.basename(uploadedAvatarPath)}`
     } catch (error) {
-      return { success: false, error: "Failed to upload avatar: " + error }
+      logServerError("Avatar upload failed", error, user.id)
+      return { success: false, error: "Failed to upload avatar. Please try again or choose a different image." }
     }
   }
 
@@ -75,37 +83,49 @@ export async function saveProfileAction(
       const uploadedBusinessLogoPath = await uploadStaticImage(user, businessLogoFile, "businessLogo.png", 500, 500)
       businessLogoUrl = `/files/static/${path.basename(uploadedBusinessLogoPath)}`
     } catch (error) {
-      return { success: false, error: "Failed to upload business logo: " + error }
+      logServerError("Business logo upload failed", error, user.id)
+      return { success: false, error: "Failed to upload business logo. Please try again or choose a smaller file." }
     }
   }
 
-  // Update user
+  // SECURITY/DPDP: Bank details now live ONLY in the encrypted Settings
+  // table (key `business_bank_details`). The plaintext column on User is
+  // preserved read-only as a fallback for unmigrated rows but is never
+  // written to anymore. A future migration will drop the column after
+  // the backfill is verified across all tenants.
   await updateUser(user.id, {
     name: validatedForm.data.name !== undefined ? validatedForm.data.name : user.name,
     avatar: avatarUrl,
     businessName: validatedForm.data.businessName !== undefined ? validatedForm.data.businessName : user.businessName,
     businessAddress:
       validatedForm.data.businessAddress !== undefined ? validatedForm.data.businessAddress : user.businessAddress,
-    businessBankDetails:
-      validatedForm.data.businessBankDetails !== undefined
-        ? validatedForm.data.businessBankDetails
-        : user.businessBankDetails,
     businessLogo: businessLogoUrl,
   })
+
+  if (validatedForm.data.businessBankDetails !== undefined) {
+    await updateSettings(user.id, "business_bank_details", validatedForm.data.businessBankDetails)
+    // Clear the legacy plaintext column so it no longer holds the value.
+    // This is a safe "lazy migration" — users who edit their details will
+    // have their plaintext wiped automatically.
+    if (user.businessBankDetails) {
+      await updateUser(user.id, { businessBankDetails: null })
+    }
+  }
 
   revalidatePath("/settings/profile")
   revalidatePath("/settings/business")
   return { success: true }
 }
 
-export async function addProjectAction(userId: string, data: Prisma.ProjectCreateInput) {
+export async function addProjectAction(data: Prisma.ProjectCreateInput) {
+  const user = await getCurrentUser()
   const validatedForm = projectFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  const project = await createProject(userId, {
+  const project = await createProject(user.id, {
     code: codeFromName(validatedForm.data.name),
     name: validatedForm.data.name,
     llm_prompt: validatedForm.data.llm_prompt || null,
@@ -116,14 +136,15 @@ export async function addProjectAction(userId: string, data: Prisma.ProjectCreat
   return { success: true, project }
 }
 
-export async function editProjectAction(userId: string, code: string, data: Prisma.ProjectUpdateInput) {
+export async function editProjectAction(code: string, data: Prisma.ProjectUpdateInput) {
+  const user = await getCurrentUser()
   const validatedForm = projectFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  const project = await updateProject(userId, code, {
+  const project = await updateProject(user.id, code, {
     name: validatedForm.data.name,
     llm_prompt: validatedForm.data.llm_prompt,
     color: validatedForm.data.color || "",
@@ -133,24 +154,27 @@ export async function editProjectAction(userId: string, code: string, data: Pris
   return { success: true, project }
 }
 
-export async function deleteProjectAction(userId: string, code: string) {
+export async function deleteProjectAction(code: string) {
+  const user = await getCurrentUser()
   try {
-    await deleteProject(userId, code)
+    await deleteProject(user.id, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete project" + error }
+    logServerError(`Failed to delete project: ${code}`, error, user.id)
+    return { success: false, error: "Failed to delete project. Please refresh and try again." }
   }
   revalidatePath("/settings/projects")
   return { success: true }
 }
 
-export async function addCurrencyAction(userId: string, data: Prisma.CurrencyCreateInput) {
+export async function addCurrencyAction(data: Prisma.CurrencyCreateInput) {
+  const user = await getCurrentUser()
   const validatedForm = currencyFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  const currency = await createCurrency(userId, {
+  const currency = await createCurrency(user.id, {
     code: validatedForm.data.code,
     name: validatedForm.data.name,
   })
@@ -159,38 +183,42 @@ export async function addCurrencyAction(userId: string, data: Prisma.CurrencyCre
   return { success: true, currency }
 }
 
-export async function editCurrencyAction(userId: string, code: string, data: Prisma.CurrencyUpdateInput) {
+export async function editCurrencyAction(code: string, data: Prisma.CurrencyUpdateInput) {
+  const user = await getCurrentUser()
   const validatedForm = currencyFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  const currency = await updateCurrency(userId, code, { name: validatedForm.data.name })
+  const currency = await updateCurrency(user.id, code, { name: validatedForm.data.name })
   revalidatePath("/settings/currencies")
   return { success: true, currency }
 }
 
-export async function deleteCurrencyAction(userId: string, code: string) {
+export async function deleteCurrencyAction(code: string) {
+  const user = await getCurrentUser()
   try {
-    await deleteCurrency(userId, code)
+    await deleteCurrency(user.id, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete currency" + error }
+    logServerError(`Failed to delete currency: ${code}`, error, user.id)
+    return { success: false, error: "Failed to delete currency. Please refresh and try again." }
   }
   revalidatePath("/settings/currencies")
   return { success: true }
 }
 
-export async function addCategoryAction(userId: string, data: Prisma.CategoryCreateInput) {
+export async function addCategoryAction(data: Prisma.CategoryCreateInput) {
+  const user = await getCurrentUser()
   const validatedForm = categoryFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
   const code = codeFromName(validatedForm.data.name)
   try {
-    const category = await createCategory(userId, {
+    const category = await createCategory(user.id, {
       code,
       name: validatedForm.data.name,
       llm_prompt: validatedForm.data.llm_prompt,
@@ -201,23 +229,26 @@ export async function addCategoryAction(userId: string, data: Prisma.CategoryCre
     return { success: true, category }
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      // Duplicate code error — this is a user-facing message, not an exception leak
       return {
         success: false,
         error: `Category with the code "${code}" already exists. Try a different name.`,
       }
     }
-    return { success: false, error: "Failed to create category" }
+    logServerError("Failed to create category", error, user.id)
+    return { success: false, error: "Failed to create category. Please try again." }
   }
 }
 
-export async function editCategoryAction(userId: string, code: string, data: Prisma.CategoryUpdateInput) {
+export async function editCategoryAction(code: string, data: Prisma.CategoryUpdateInput) {
+  const user = await getCurrentUser()
   const validatedForm = categoryFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  const category = await updateCategory(userId, code, {
+  const category = await updateCategory(user.id, code, {
     name: validatedForm.data.name,
     llm_prompt: validatedForm.data.llm_prompt,
     color: validatedForm.data.color || "",
@@ -227,24 +258,27 @@ export async function editCategoryAction(userId: string, code: string, data: Pri
   return { success: true, category }
 }
 
-export async function deleteCategoryAction(userId: string, code: string) {
+export async function deleteCategoryAction(code: string) {
+  const user = await getCurrentUser()
   try {
-    await deleteCategory(userId, code)
+    await deleteCategory(user.id, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete category" + error }
+    logServerError(`Failed to delete category: ${code}`, error, user.id)
+    return { success: false, error: "Failed to delete category. Please refresh and try again." }
   }
   revalidatePath("/settings/categories")
   return { success: true }
 }
 
-export async function addFieldAction(userId: string, data: Prisma.FieldCreateInput) {
+export async function addFieldAction(data: Prisma.FieldCreateInput) {
+  const user = await getCurrentUser()
   const validatedForm = fieldFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  const field = await createField(userId, {
+  const field = await createField(user.id, {
     code: codeFromName(validatedForm.data.name),
     name: validatedForm.data.name,
     type: validatedForm.data.type,
@@ -259,14 +293,15 @@ export async function addFieldAction(userId: string, data: Prisma.FieldCreateInp
   return { success: true, field }
 }
 
-export async function editFieldAction(userId: string, code: string, data: Prisma.FieldUpdateInput) {
+export async function editFieldAction(code: string, data: Prisma.FieldUpdateInput) {
+  const user = await getCurrentUser()
   const validatedForm = fieldFormSchema.safeParse(data)
 
   if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+    return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  const field = await updateField(userId, code, {
+  const field = await updateField(user.id, code, {
     name: validatedForm.data.name,
     type: validatedForm.data.type,
     llm_prompt: validatedForm.data.llm_prompt,
@@ -279,11 +314,13 @@ export async function editFieldAction(userId: string, code: string, data: Prisma
   return { success: true, field }
 }
 
-export async function deleteFieldAction(userId: string, code: string) {
+export async function deleteFieldAction(code: string) {
+  const user = await getCurrentUser()
   try {
-    await deleteField(userId, code)
+    await deleteField(user.id, code)
   } catch (error) {
-    return { success: false, error: "Failed to delete field" + error }
+    logServerError(`Failed to delete field: ${code}`, error, user.id)
+    return { success: false, error: "Failed to delete field. Please refresh and try again." }
   }
   revalidatePath("/settings/fields")
   return { success: true }

@@ -3,6 +3,7 @@ import { authenticateAgent } from "../auth"
 import { getTransactions } from "@/models/transactions"
 import { getSettings } from "@/models/settings"
 import { generateGSTR1Report, generateGSTR1JSON } from "@/lib/gstr1"
+import { getGSTRPeriodDates, validateGSTRPeriod } from "@/lib/indian-fy"
 
 /**
  * GET /api/agent/gstr1?period=032026 — Generate GSTR-1 report
@@ -19,26 +20,17 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams
   const period = params.get("period")
   const format = params.get("format") || "summary"
+  const periodValue = period || ""
 
-  if (!period || period.length !== 6) {
+  const validation = validateGSTRPeriod(periodValue)
+  if (!validation.valid) {
     return NextResponse.json(
-      { error: "period is required in MMYYYY format (e.g., 032026 for March 2026)" },
+      { error: validation.error || "Invalid period." },
       { status: 400 }
     )
   }
 
-  const month = parseInt(period.slice(0, 2)) - 1 // JS months are 0-indexed
-  const year = parseInt(period.slice(2))
-
-  if (month < 0 || month > 11 || year < 2017) {
-    return NextResponse.json(
-      { error: "Invalid period. Month must be 01-12, year must be >= 2017." },
-      { status: 400 }
-    )
-  }
-
-  const dateFrom = new Date(year, month, 1)
-  const dateTo = new Date(year, month + 1, 0, 23, 59, 59) // last day of month
+  const { start: dateFrom, end: dateTo } = getGSTRPeriodDates(periodValue)
 
   const { transactions } = await getTransactions(user.id, {
     dateFrom: dateFrom.toISOString(),
@@ -51,9 +43,9 @@ export async function GET(req: NextRequest) {
   const report = generateGSTR1Report(transactions, businessStateCode)
 
   if (format === "json") {
-    const portalJSON = generateGSTR1JSON(report, settings.business_gstin || "", period)
-    return NextResponse.json({ gstr1: portalJSON, period })
+    const portalJSON = generateGSTR1JSON(report, settings.business_gstin || "", periodValue)
+    return NextResponse.json({ gstr1: portalJSON, period: periodValue })
   }
 
-  return NextResponse.json({ report, period })
+  return NextResponse.json({ report, period: periodValue })
 }

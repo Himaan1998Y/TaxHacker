@@ -7,8 +7,8 @@ import {
   getDirectorySize,
   getTransactionFileUploadPath,
   getUserUploadsDirectory,
-  isEnoughStorageToUploadFile,
   safePathJoin,
+  validateUploadedFile,
 } from "@/lib/files"
 import { updateField } from "@/models/fields"
 import { createFile, deleteFile } from "@/models/files"
@@ -20,10 +20,10 @@ import {
   updateTransaction,
   updateTransactionFiles,
 } from "@/models/transactions"
-import { updateUser } from "@/models/users"
+import { releaseStorageQuota, reserveStorageQuota, updateUser } from "@/models/users"
 import { Transaction } from "@/prisma/client"
 import { randomUUID } from "crypto"
-import { mkdir, writeFile } from "fs/promises"
+import { mkdir, unlink, writeFile } from "fs/promises"
 import { revalidatePath } from "next/cache"
 import path from "path"
 
@@ -36,10 +36,10 @@ export async function createTransactionAction(
     const validatedForm = transactionFormSchema.safeParse(Object.fromEntries(formData.entries()))
 
     if (!validatedForm.success) {
-      return { success: false, error: validatedForm.error.message }
+      return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
     }
 
-    const transaction = await createTransaction(user.id, validatedForm.data)
+    const transaction = await createTransaction(user.id, validatedForm.data as import("@/models/transactions").TransactionData)
 
     revalidatePath("/transactions")
     return { success: true, data: transaction }
@@ -59,10 +59,10 @@ export async function saveTransactionAction(
     const validatedForm = transactionFormSchema.safeParse(Object.fromEntries(formData.entries()))
 
     if (!validatedForm.success) {
-      return { success: false, error: validatedForm.error.message }
+      return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
     }
 
-    const transaction = await updateTransaction(transactionId, user.id, validatedForm.data)
+    const transaction = await updateTransaction(transactionId, user.id, validatedForm.data as import("@/models/transactions").TransactionData)
 
     revalidatePath("/transactions")
     return { success: true, data: transaction }
@@ -139,12 +139,6 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
 
     const userUploadsDirectory = getUserUploadsDirectory(user)
 
-    // Check limits
-    const totalFileSize = files.reduce((acc, file) => acc + file.size, 0)
-    if (!isEnoughStorageToUploadFile(user, totalFileSize)) {
-      return { success: false, error: `Insufficient storage to upload new files` }
-    }
-
     if (isSubscriptionExpired(user)) {
       return {
         success: false,
@@ -152,53 +146,84 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
       }
     }
 
-    const fileRecords = await Promise.all(
-      files.map(async (file) => {
-        const fileUuid = randomUUID()
-        const relativeFilePath = getTransactionFileUploadPath(fileUuid, file.name, transaction)
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
+    // SECURITY/INTEGRITY: Atomic quota reservation (see files/actions.ts
+    // for the full explanation of the TOCTOU race this fixes).
+    const totalFileSize = files.reduce((acc, file) => acc + file.size, 0)
+    const reserved = await reserveStorageQuota(user.id, totalFileSize)
+    if (!reserved) {
+      return { success: false, error: "Insufficient storage to upload new files" }
+    }
 
-        const fullFilePath = safePathJoin(userUploadsDirectory, relativeFilePath)
-        await mkdir(path.dirname(fullFilePath), { recursive: true })
+    const writtenPaths: string[] = []
 
-        await writeFile(fullFilePath, buffer)
+    try {
+      const fileRecords = await Promise.all(
+        files.map(async (file) => {
+          const fileUuid = randomUUID()
+          const relativeFilePath = getTransactionFileUploadPath(fileUuid, file.name, transaction)
+          const arrayBuffer = await file.arrayBuffer()
+          const buffer = Buffer.from(arrayBuffer)
 
-        // Create file record in database
-        const fileRecord = await createFile(user.id, {
-          id: fileUuid,
-          filename: file.name,
-          path: relativeFilePath,
-          mimetype: file.type,
-          isReviewed: true,
-          metadata: {
-            size: file.size,
-            lastModified: file.lastModified,
-          },
+          const validationError = validateUploadedFile(file, buffer.slice(0, 8))
+          if (validationError) {
+            throw new Error(validationError)
+          }
+
+          const fullFilePath = safePathJoin(userUploadsDirectory, relativeFilePath)
+          await mkdir(path.dirname(fullFilePath), { recursive: true })
+
+          await writeFile(fullFilePath, buffer)
+          writtenPaths.push(fullFilePath)
+
+          // Create file record in database
+          const fileRecord = await createFile(user.id, {
+            id: fileUuid,
+            filename: file.name,
+            path: relativeFilePath,
+            mimetype: file.type,
+            isReviewed: true,
+            metadata: {
+              size: file.size,
+              lastModified: file.lastModified,
+            },
+          })
+
+          return fileRecord
         })
+      )
 
-        return fileRecord
-      })
-    )
+      // Update invoice with the new file ID
+      await updateTransactionFiles(
+        transactionId,
+        user.id,
+        transaction.files
+          ? [...(transaction.files as string[]), ...fileRecords.map((file) => file.id)]
+          : fileRecords.map((file) => file.id)
+      )
 
-    // Update invoice with the new file ID
-    await updateTransactionFiles(
-      transactionId,
-      user.id,
-      transaction.files
-        ? [...(transaction.files as string[]), ...fileRecords.map((file) => file.id)]
-        : fileRecords.map((file) => file.id)
-    )
+      // Reconcile reserved usage against actual disk usage
+      const storageUsed = await getDirectorySize(getUserUploadsDirectory(user))
+      await updateUser(user.id, { storageUsed })
 
-    // Update user storage used
-    const storageUsed = await getDirectorySize(getUserUploadsDirectory(user))
-    await updateUser(user.id, { storageUsed })
-
-    revalidatePath(`/transactions/${transactionId}`)
-    return { success: true }
+      revalidatePath(`/transactions/${transactionId}`)
+      return { success: true }
+    } catch (error) {
+      // Roll back: delete partial files + release reserved quota
+      await Promise.all(
+        writtenPaths.map(async (p) => {
+          try {
+            await unlink(p)
+          } catch {
+            // ignore cleanup failures
+          }
+        })
+      )
+      await releaseStorageQuota(user.id, totalFileSize)
+      throw error
+    }
   } catch (error) {
     console.error("Upload error:", error)
-    return { success: false, error: `File upload failed: ${error}` }
+    return { success: false, error: "File upload failed. Please try again." }
   }
 }
 

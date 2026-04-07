@@ -74,6 +74,6 @@ export async function saveTransactionsAction(
     return { success: true }
   } catch (error) {
     console.error("Error saving transactions:", error)
-    return { success: false, error: "Failed to save transactions: " + error }
+    return { success: false, error: "Failed to save transactions. Please check the CSV format and try again." }
   }
 }

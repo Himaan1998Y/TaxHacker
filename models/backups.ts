@@ -268,16 +268,27 @@ export async function modelFromJSON(
     }
 
     let insertedCount = 0
+    let failedCount = 0
     for (const rawRecord of records) {
       const record = preprocessRowData(rawRecord)
 
       try {
         const data = await backupSettings.restore(userId, record)
         await backupSettings.model.create({ data })
+        // SECURITY/INTEGRITY: Only count successful inserts. Previously
+        // `insertedCount++` was outside the try block, so failed inserts
+        // were reported as "restored" to the user.
+        insertedCount++
       } catch (error) {
+        failedCount++
         console.error(`Error importing record:`, error)
       }
-      insertedCount++
+    }
+
+    if (failedCount > 0) {
+      console.warn(
+        `Backup restore for ${backupSettings.filename}: ${insertedCount} succeeded, ${failedCount} failed`
+      )
     }
 
     return insertedCount

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { generateEInvoiceQRFromFields } from "@/lib/e-invoice"
+import { generateInvoiceReferenceQRFromFields } from "@/lib/e-invoice"
 import { fetchAsBase64 } from "@/lib/utils"
 import { SettingsMap } from "@/models/settings"
 import { Currency, User } from "@/prisma/client"
@@ -79,7 +79,7 @@ async function buildFormDataWithQR(formData: InvoiceFormData, user: User, settin
   const subtotal = formData.items.reduce((sum, item) => sum + item.subtotal, 0)
   const taxes = formData.additionalTaxes.reduce((sum, tax) => sum + tax.amount, 0)
   const total = formData.taxIncluded ? subtotal : subtotal + taxes
-  result.qrDataUrl = await generateEInvoiceQRFromFields({
+  result.qrDataUrl = await generateInvoiceReferenceQRFromFields({
     businessGstin,
     businessName: user.name,
     invoiceNumber: formData.invoiceNumber,
@@ -87,6 +87,7 @@ async function buildFormDataWithQR(formData: InvoiceFormData, user: User, settin
     invoiceValue: total.toFixed(2),
     hsn: "",
     irn: "",
+    paymentDetails: formData.bankDetails,
   })
   return result
 }
@@ -134,7 +135,7 @@ export function InvoiceGenerator({
       const pdfBuffer = await generateInvoicePDF(enrichedData)
 
       // Create a blob from the buffer
-      const blob = new Blob([pdfBuffer], { type: "application/pdf" })
+      const blob = new Blob([Uint8Array.from(pdfBuffer)], { type: "application/pdf" })
 
       // Create a URL for the blob
       const url = URL.createObjectURL(blob)
@@ -171,7 +172,7 @@ export function InvoiceGenerator({
     }
 
     try {
-      const result = await addNewTemplateAction(user, {
+      const result = await addNewTemplateAction({
         id: `tmpl_${Math.random().toString(36).substring(2, 15)}`,
         name: newTemplateName,
         formData: formData,
@@ -195,7 +196,7 @@ export function InvoiceGenerator({
     if (!templateId) return // Don't allow deleting default templates
 
     try {
-      const result = await deleteTemplateAction(user, templateId)
+      const result = await deleteTemplateAction(templateId)
       if (result.success) {
         router.refresh()
       }
@@ -277,6 +278,9 @@ export function InvoiceGenerator({
               </>
             )}
           </Button>
+          <p className="max-w-xs text-xs text-muted-foreground leading-5">
+            This QR contains invoice reference data. For IRP-registered e-Invoicing, use a GSP partner.
+          </p>
           <Button variant="secondary" onClick={() => setIsTemplateDialogOpen(true)}>
             <TextSelect />
             Make a Template

@@ -4,10 +4,16 @@ import { logSecurityEvent } from "@/lib/security-log"
 import config from "@/lib/config"
 import { User } from "@/prisma/client"
 import crypto from "crypto"
+import { decrypt } from "@/lib/encryption"
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
 const RATE_LIMIT_MAX = 60 // 60 requests per minute
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+/** SHA-256 hash of an API key — used for storage and comparison */
+function hashApiKey(key: string): string {
+  return crypto.createHash("sha256").update(key).digest("hex")
+}
 
 /**
  * Authenticate an agent API request.
@@ -15,7 +21,7 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
  *
  * Auth flow:
  * 1. Check X-Agent-Key header
- * 2. Compare against agent_api_key stored in Settings table (for self-hosted user)
+ * 2. Hash it with SHA-256, compare against stored hash in Settings table
  * 3. Rate limit by key
  */
 export async function authenticateAgent(
@@ -50,7 +56,7 @@ export async function authenticateAgent(
     )
   }
 
-  // Get stored API key from settings
+  // Get stored API key hash from settings
   const setting = await prisma.setting.findUnique({
     where: { userId_code: { userId: user.id, code: "agent_api_key" } },
   })
@@ -62,11 +68,41 @@ export async function authenticateAgent(
     )
   }
 
-  // Constant-time comparison to prevent timing attacks
-  const storedKey = Buffer.from(setting.value, "utf8")
-  const providedKey = Buffer.from(apiKey, "utf8")
+  // Decrypt the stored value (settings layer encrypts SENSITIVE_SETTINGS)
+  const storedValue = decrypt(setting.value)
 
-  if (storedKey.length !== providedKey.length || !crypto.timingSafeEqual(storedKey, providedKey)) {
+  // Migration: detect if stored value is old-format plaintext key (starts with "thk_")
+  // vs new-format SHA-256 hash (64 hex chars, no prefix)
+  const isLegacyFormat = storedValue.startsWith("thk_")
+  let isValid = false
+
+  if (isLegacyFormat) {
+    // Legacy: compare directly (timing-safe)
+    const storedBuf = Buffer.from(storedValue, "utf8")
+    const providedBuf = Buffer.from(apiKey, "utf8")
+    if (storedBuf.length === providedBuf.length) {
+      isValid = crypto.timingSafeEqual(storedBuf, providedBuf)
+    }
+
+    // Auto-migrate: store the hash instead on successful auth
+    if (isValid) {
+      const hashedKey = hashApiKey(apiKey)
+      await prisma.setting.update({
+        where: { userId_code: { userId: user.id, code: "agent_api_key" } },
+        data: { value: hashedKey },
+      })
+    }
+  } else {
+    // New format: compare hashes (both are 64-char hex strings)
+    const providedHash = hashApiKey(apiKey)
+    const storedBuf = Buffer.from(storedValue, "utf8")
+    const providedBuf = Buffer.from(providedHash, "utf8")
+    if (storedBuf.length === providedBuf.length) {
+      isValid = crypto.timingSafeEqual(storedBuf, providedBuf)
+    }
+  }
+
+  if (!isValid) {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null
     logSecurityEvent("agent.key_rejected", user.id, { keyPrefix: apiKey.slice(0, 8) }, ip, req.headers.get("user-agent"))
     return NextResponse.json(
@@ -103,9 +139,12 @@ export async function authenticateAgent(
 }
 
 /**
- * Helper to generate a random API key.
- * Call this from a setup endpoint or manually.
+ * Generate a new agent API key.
+ * Returns { plainKey, hashedKey }. The plainKey is shown once to the user.
+ * Store hashedKey in settings (it will be encrypted at rest by the settings layer).
  */
-export function generateAgentApiKey(): string {
-  return `thk_${crypto.randomBytes(32).toString("hex")}`
+export function generateAgentApiKey(): { plainKey: string; hashedKey: string } {
+  const plainKey = `thk_${crypto.randomBytes(32).toString("hex")}`
+  const hashedKey = hashApiKey(plainKey)
+  return { plainKey, hashedKey }
 }

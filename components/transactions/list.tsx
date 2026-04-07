@@ -92,7 +92,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
       <div className="text-right text-lg">
         <div
           className={cn(
-            { income: "text-green-500", expense: "text-red-500", other: "text-black" }[transaction.type || "other"],
+            { income: "text-green-500", expense: "text-red-500", pending: "text-yellow-500", other: "text-black" }[transaction.type || "other"],
             "flex flex-col justify-end"
           )}
         >
@@ -148,7 +148,7 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
     formatValue: (transaction: Transaction) => (
       <div
         className={cn(
-          { income: "text-green-500", expense: "text-red-500", other: "text-black" }[transaction.type || "other"],
+          { income: "text-green-500", expense: "text-red-500", pending: "text-yellow-500", other: "text-black" }[transaction.type || "other"],
           "flex flex-col justify-end text-right text-lg"
         )}
       >

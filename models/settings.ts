@@ -9,7 +9,7 @@ import { LLMProvider } from "@/ai/providers/llmProvider"
 // Settings codes that contain sensitive values — encrypted at rest
 const SENSITIVE_SETTINGS = new Set([
   "openai_api_key", "google_api_key", "mistral_api_key", "openrouter_api_key",
-  "agent_api_key",
+  "agent_api_key", "business_bank_details",
 ])
 
 export type SettingsMap = Record<string, string>

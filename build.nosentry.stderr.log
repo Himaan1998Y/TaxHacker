@@ -1,0 +1,19 @@
+glob error [Error: EPERM: operation not permitted, scandir 'C:\Users\Himanshu\Application Data'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'scandir',
+  path: 'C:\\Users\\Himanshu\\Application Data'
+}
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+[Error: EPERM: operation not permitted, scandir 'C:\Users\Himanshu\Application Data'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'scandir',
+  path: 'C:\\Users\\Himanshu\\Application Data'
+}
+
+Node.js v24.13.0
+Next.js build worker exited with code: 1 and signal: null

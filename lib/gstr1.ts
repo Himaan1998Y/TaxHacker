@@ -2,13 +2,14 @@
 // Pure logic — no React, no DB calls
 // Reference: GSTN GSTR-1 filing format
 
+import { TransactionType } from "@/prisma/client"
 import { formatDate } from "date-fns"
-import { INDIAN_STATES, stateCodeFromGSTIN } from "./indian-states"
+import { INDIAN_STATES, STATE_NAME_TO_CODE, stateCodeFromGSTIN } from "./indian-states"
 import { validateGSTIN } from "./indian-tax-utils"
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-export type GSTR1Section = "b2b" | "b2cl" | "b2cs" | "exp" | "nil" | "exempt" | "skip"
+export type GSTR1Section = "b2b" | "b2cl" | "b2cs" | "exp" | "nil" | "exempt" | "cdnr" | "cdnur" | "at" | "atadj" | "skip"
 
 export type GSTR1Transaction = {
   id: string
@@ -17,6 +18,7 @@ export type GSTR1Transaction = {
   invoiceNumber: string | null
   gstin: string | null
   total: number            // in rupees (already divided by 100)
+  taxableAmount: number    // in rupees (preferred source-of-truth)
   gstRate: number
   cgst: number
   sgst: number
@@ -27,7 +29,7 @@ export type GSTR1Transaction = {
   supplyType: string | null
   reverseCharge: boolean
   issuedAt: Date | null
-  type: string             // "expense" | "income"
+  type: TransactionType | null | undefined
   categoryCode: string | null
 }
 
@@ -103,10 +105,62 @@ export type HSNEntry = {
 
 export type NilExemptEntry = {
   description: string
-  nilRatedInter: number
-  nilRatedIntra: number
-  exemptedInter: number
-  exemptedIntra: number
+  nilRatedInterB2B: number
+  nilRatedInterB2C: number
+  nilRatedIntraB2B: number
+  nilRatedIntraB2C: number
+  exemptedInterB2B: number
+  exemptedInterB2C: number
+  exemptedIntraB2B: number
+  exemptedIntraB2C: number
+  nonGSTInterB2B: number
+  nonGSTInterB2C: number
+  nonGSTIntraB2B: number
+  nonGSTIntraB2C: number
+}
+
+// ─── CDNR Types (Credit/Debit Note — Registered) ─────────────────────
+
+export type CDNREntry = {
+  gstin: string
+  noteNumber: string
+  noteDate: string
+  noteType: "C" | "D"           // Credit or Debit
+  noteValue: number
+  placeOfSupply: string
+  reverseCharge: string
+  rate: number
+  taxableValue: number
+  cgst: number
+  sgst: number
+  igst: number
+  cess: number
+}
+
+// ─── CDNUR Types (Credit/Debit Note — Unregistered) ──────────────────
+
+export type CDNUREntry = {
+  noteNumber: string
+  noteDate: string
+  noteType: "C" | "D"
+  noteValue: number
+  placeOfSupply: string
+  rate: number
+  taxableValue: number
+  igst: number
+  cess: number
+}
+
+// ─── AT Types (Advances Received / Adjusted) ─────────────────────────
+
+export type ATEntry = {
+  placeOfSupply: string
+  rate: number
+  grossAdvanceReceived: number
+  igst: number
+  cgst: number
+  sgst: number
+  cess: number
 }
 
 // ─── Summary ─────────────────────────────────────────────────────────
@@ -115,6 +169,10 @@ export type GSTR1Summary = {
   b2b: B2BEntry[]
   b2cl: B2CLInvoice[]
   b2cs: B2CSEntry[]
+  cdnr: CDNREntry[]
+  cdnur: CDNUREntry[]
+  at: ATEntry[]
+  atadj: ATEntry[]
   hsn: HSNEntry[]
   nil: NilExemptEntry[]
   classified: ClassifiedTransaction[]
@@ -127,6 +185,7 @@ export type GSTR1Summary = {
 const B2CL_THRESHOLD = 250000 // ₹2,50,000 — B2C Large threshold for inter-state
 
 const NIL_CATEGORIES = ["gst_nil_rated", "nil_rated"]
+const CREDIT_DEBIT_NOTE_TYPES = ["credit_note", "debit_note", "CREDIT_NOTE", "DEBIT_NOTE", "CDN", "DNR"]
 const EXEMPT_CATEGORIES = ["gst_exempt", "exempt"]
 const EXPORT_SUPPLY_TYPES = ["export", "Export", "EXPORT"]
 
@@ -137,14 +196,34 @@ export function classifyTransaction(
   businessStateCode: string | null
 ): ClassifiedTransaction {
   const warnings: string[] = []
+  const supplyType = tx.supplyType?.trim().toUpperCase() || ""
 
   // Only outward supplies (income) go into GSTR-1
   if (tx.type === "expense") {
     return { ...tx, section: "skip", warnings: ["Expense transaction — not included in GSTR-1 (outward supplies only)"] }
   }
 
+  // Credit/Debit notes → CDNR (with GSTIN) or CDNUR (without)
+  if (supplyType && CREDIT_DEBIT_NOTE_TYPES.some(t => supplyType.includes(t.toUpperCase()))) {
+    if (!tx.invoiceNumber) warnings.push("Missing invoice number")
+    if (!tx.placeOfSupply) warnings.push("Missing place of supply")
+    if (tx.gstin && validateGSTIN(tx.gstin).valid) {
+      return { ...tx, section: "cdnr", warnings }
+    }
+    return { ...tx, section: "cdnur", warnings }
+  }
+
+  // Advance receipts / adjustments → AT / ATADJ
+  if (supplyType && (supplyType.includes("ADVANCE") || supplyType === "AT" || supplyType === "ATADJ")) {
+    if (!tx.placeOfSupply) warnings.push("Missing place of supply")
+    if (supplyType.includes("ADJ") || supplyType === "ATADJ") {
+      return { ...tx, section: "atadj", warnings }
+    }
+    return { ...tx, section: "at", warnings }
+  }
+
   // Check for export
-  if (tx.supplyType && EXPORT_SUPPLY_TYPES.includes(tx.supplyType)) {
+  if (supplyType && EXPORT_SUPPLY_TYPES.some(t => supplyType === t.toUpperCase())) {
     if (!tx.invoiceNumber) warnings.push("Missing invoice number")
     return { ...tx, section: "exp", warnings }
   }
@@ -214,10 +293,8 @@ export function classifyTransaction(
 function determineInterState(tx: GSTR1Transaction, businessStateCode: string | null): boolean {
   if (!businessStateCode || !tx.placeOfSupply) return false
 
-  // Try to get state code from place of supply
-  const posCode = Object.entries(INDIAN_STATES).find(
-    ([, name]) => name.toLowerCase() === tx.placeOfSupply?.toLowerCase()
-  )?.[0]
+  // Accept either a state name or a 2-digit code for place of supply.
+  const posCode = resolveStateCode(tx.placeOfSupply)
 
   if (!posCode) return false
   return posCode !== businessStateCode
@@ -226,23 +303,35 @@ function determineInterState(tx: GSTR1Transaction, businessStateCode: string | n
 // ─── Transform DB Transaction → GSTR1Transaction ────────────────────
 
 export function transactionToGSTR1(tx: any): GSTR1Transaction {
+  // Prefer promoted first-class columns; fall back to extra JSON for backward compat
   const extra = (tx.extra as Record<string, any>) || {}
   return {
     id: tx.id,
     name: tx.name,
     merchant: tx.merchant,
-    invoiceNumber: extra.invoice_number || null,
-    gstin: extra.gstin || null,
-    total: (tx.total || 0) / 100, // cents → rupees
-    gstRate: Number(extra.gst_rate) || 0,
-    cgst: Number(extra.cgst) || 0,
-    sgst: Number(extra.sgst) || 0,
-    igst: Number(extra.igst) || 0,
-    cess: Number(extra.cess) || 0,
-    hsnCode: extra.hsn_sac_code || null,
-    placeOfSupply: extra.place_of_supply || null,
-    supplyType: extra.supply_type || null,
-    reverseCharge: extra.reverse_charge === "Yes" || extra.reverse_charge === "yes",
+    invoiceNumber: tx.invoiceNumber ?? extra.invoice_number ?? null,
+    gstin: tx.gstin ?? extra.gstin ?? null,
+    total: (tx.total || 0) / 100, // paise → rupees
+    taxableAmount: tx.taxableAmount != null
+      ? Number(tx.taxableAmount) / 100
+      : Math.max(0, (tx.total || 0) / 100 -
+          (tx.cgst != null ? Number(tx.cgst) / 100 : Number(extra.cgst) || 0) -
+          (tx.sgst != null ? Number(tx.sgst) / 100 : Number(extra.sgst) || 0) -
+          (tx.igst != null ? Number(tx.igst) / 100 : Number(extra.igst) || 0) -
+          (tx.cess != null ? Number(tx.cess) / 100 : Number(extra.cess) || 0)
+        ),
+    gstRate: Number(tx.gstRate ?? extra.gst_rate) || 0,
+    // Promoted paise columns → rupees; fall back to extra (stored in rupees already)
+    cgst: tx.cgst != null ? Number(tx.cgst) / 100 : Number(extra.cgst) || 0,
+    sgst: tx.sgst != null ? Number(tx.sgst) / 100 : Number(extra.sgst) || 0,
+    igst: tx.igst != null ? Number(tx.igst) / 100 : Number(extra.igst) || 0,
+    cess: tx.cess != null ? Number(tx.cess) / 100 : Number(extra.cess) || 0,
+    hsnCode: tx.hsnCode ?? extra.hsn_sac_code ?? null,
+    placeOfSupply: tx.placeOfSupply ?? extra.place_of_supply ?? null,
+    supplyType: tx.supplyType ?? extra.supply_type ?? null,
+    reverseCharge: typeof tx.reverseCharge === "boolean"
+      ? tx.reverseCharge
+      : extra.reverse_charge === "Yes" || extra.reverse_charge === "yes" || extra.reverse_charge === true,
     issuedAt: tx.issuedAt ? new Date(tx.issuedAt) : null,
     type: tx.type || "expense",
     categoryCode: tx.categoryCode || null,
@@ -256,7 +345,12 @@ export function aggregateB2B(transactions: ClassifiedTransaction[]): B2BEntry[] 
   const grouped: Record<string, B2BEntry> = {}
 
   for (const tx of b2bTxns) {
-    const gstin = tx.gstin || "UNKNOWN"
+    if (!tx.gstin || !validateGSTIN(tx.gstin).valid) {
+      tx.warnings.push("B2B row skipped for JSON export: invalid or missing GSTIN")
+      continue
+    }
+
+    const gstin = tx.gstin
     if (!grouped[gstin]) {
       grouped[gstin] = {
         gstin,
@@ -266,7 +360,7 @@ export function aggregateB2B(transactions: ClassifiedTransaction[]): B2BEntry[] 
       }
     }
 
-    const taxableValue = tx.total - tx.cgst - tx.sgst - tx.igst - tx.cess
+    const taxableValue = tx.taxableAmount
     grouped[gstin].invoices.push({
       invoiceNumber: tx.invoiceNumber || "",
       invoiceDate: tx.issuedAt ? formatDate(tx.issuedAt, "dd/MM/yyyy") : "",
@@ -290,14 +384,14 @@ export function aggregateB2CL(transactions: ClassifiedTransaction[]): B2CLInvoic
   return transactions
     .filter(tx => tx.section === "b2cl")
     .map(tx => {
-      const taxableValue = tx.total - tx.igst - tx.cess
+      const taxableValue = tx.taxableAmount
       return {
         invoiceNumber: tx.invoiceNumber || "",
         invoiceDate: tx.issuedAt ? formatDate(tx.issuedAt, "dd/MM/yyyy") : "",
         invoiceValue: round(tx.total),
         placeOfSupply: tx.placeOfSupply || "",
         rate: tx.gstRate,
-        taxableValue: round(taxableValue > 0 ? taxableValue : tx.total),
+        taxableValue: round(taxableValue),
         igst: round(tx.igst),
         cess: round(tx.cess),
       }
@@ -331,8 +425,8 @@ export function aggregateB2CS(
       }
     }
 
-    const taxableValue = tx.total - tx.cgst - tx.sgst - tx.igst - tx.cess
-    grouped[key].taxableValue += taxableValue > 0 ? taxableValue : tx.total
+    const taxableValue = tx.taxableAmount
+    grouped[key].taxableValue += taxableValue
     grouped[key].cgst += tx.cgst
     grouped[key].sgst += tx.sgst
     grouped[key].igst += tx.igst
@@ -369,10 +463,10 @@ export function aggregateHSN(transactions: ClassifiedTransaction[]): HSNEntry[] 
       }
     }
 
-    const taxableValue = tx.total - tx.cgst - tx.sgst - tx.igst - tx.cess
+    const taxableValue = tx.taxableAmount
     grouped[hsn].totalQuantity += 1
     grouped[hsn].totalValue += tx.total
-    grouped[hsn].taxableValue += taxableValue > 0 ? taxableValue : tx.total
+    grouped[hsn].taxableValue += taxableValue
     grouped[hsn].igst += tx.igst
     grouped[hsn].cgst += tx.cgst
     grouped[hsn].sgst += tx.sgst
@@ -394,37 +488,147 @@ export function aggregateNil(
   transactions: ClassifiedTransaction[],
   businessStateCode: string | null
 ): NilExemptEntry[] {
-  const nilTxns = transactions.filter(tx => tx.section === "nil")
-  const exemptTxns = transactions.filter(tx => tx.section === "exempt")
+  let nilInterB2B = 0, nilInterB2C = 0, nilIntraB2B = 0, nilIntraB2C = 0
+  let exemptInterB2B = 0, exemptInterB2C = 0, exemptIntraB2B = 0, exemptIntraB2C = 0
+  let nonGSTInterB2B = 0, nonGSTInterB2C = 0, nonGSTIntraB2B = 0, nonGSTIntraB2C = 0
 
-  let nilInter = 0, nilIntra = 0, exemptInter = 0, exemptIntra = 0
+  for (const tx of transactions.filter(item => item.section === "nil" || item.section === "exempt")) {
+    const isInter = determineInterState(tx, businessStateCode)
+    const isB2B = tx.gstin ? validateGSTIN(tx.gstin).valid : false
+    const category = (tx.categoryCode || "").toLowerCase()
 
-  for (const tx of nilTxns) {
-    if (determineInterState(tx, businessStateCode)) {
-      nilInter += tx.total
-    } else {
-      nilIntra += tx.total
+    if (category.includes("non_gst") || category.includes("non-gst")) {
+      if (isInter) {
+        if (isB2B) nonGSTInterB2B += tx.taxableAmount
+        else nonGSTInterB2C += tx.taxableAmount
+      } else {
+        if (isB2B) nonGSTIntraB2B += tx.taxableAmount
+        else nonGSTIntraB2C += tx.taxableAmount
+      }
+      continue
     }
-  }
 
-  for (const tx of exemptTxns) {
-    if (determineInterState(tx, businessStateCode)) {
-      exemptInter += tx.total
-    } else {
-      exemptIntra += tx.total
+    if (tx.section === "exempt") {
+      if (isInter) {
+        if (isB2B) exemptInterB2B += tx.taxableAmount
+        else exemptInterB2C += tx.taxableAmount
+      } else {
+        if (isB2B) exemptIntraB2B += tx.taxableAmount
+        else exemptIntraB2C += tx.taxableAmount
+      }
+      continue
+    }
+
+    if (tx.section === "nil") {
+      if (isInter) {
+        if (isB2B) nilInterB2B += tx.taxableAmount
+        else nilInterB2C += tx.taxableAmount
+      } else {
+        if (isB2B) nilIntraB2B += tx.taxableAmount
+        else nilIntraB2C += tx.taxableAmount
+      }
     }
   }
 
   return [{
     description: "Nil Rated / Exempt Supplies",
-    nilRatedInter: round(nilInter),
-    nilRatedIntra: round(nilIntra),
-    exemptedInter: round(exemptInter),
-    exemptedIntra: round(exemptIntra),
+    nilRatedInterB2B: round(nilInterB2B),
+    nilRatedInterB2C: round(nilInterB2C),
+    nilRatedIntraB2B: round(nilIntraB2B),
+    nilRatedIntraB2C: round(nilIntraB2C),
+    exemptedInterB2B: round(exemptInterB2B),
+    exemptedInterB2C: round(exemptInterB2C),
+    exemptedIntraB2B: round(exemptIntraB2B),
+    exemptedIntraB2C: round(exemptIntraB2C),
+    nonGSTInterB2B: round(nonGSTInterB2B),
+    nonGSTInterB2C: round(nonGSTInterB2C),
+    nonGSTIntraB2B: round(nonGSTIntraB2B),
+    nonGSTIntraB2C: round(nonGSTIntraB2C),
   }]
 }
 
+export function aggregateAT(transactions: ClassifiedTransaction[], section: "at" | "atadj"): ATEntry[] {
+  const grouped: Record<string, ATEntry> = {}
+
+  for (const tx of transactions.filter(item => item.section === section)) {
+    const placeOfSupply = tx.placeOfSupply || "Unknown"
+    const rate = tx.gstRate || 0
+    const key = `${placeOfSupply}|${rate}`
+
+    if (!grouped[key]) {
+      grouped[key] = {
+        placeOfSupply,
+        rate,
+        grossAdvanceReceived: 0,
+        igst: 0,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+      }
+    }
+
+    grouped[key].grossAdvanceReceived += tx.total
+    grouped[key].igst += tx.igst
+    grouped[key].cgst += tx.cgst
+    grouped[key].sgst += tx.sgst
+    grouped[key].cess += tx.cess
+  }
+
+  return Object.values(grouped).map(entry => ({
+    ...entry,
+    grossAdvanceReceived: round(entry.grossAdvanceReceived),
+    igst: round(entry.igst),
+    cgst: round(entry.cgst),
+    sgst: round(entry.sgst),
+    cess: round(entry.cess),
+  }))
+}
+
 // ─── Full GSTR-1 Report Generation ──────────────────────────────────
+
+export function aggregateCDNR(transactions: ClassifiedTransaction[]): CDNREntry[] {
+  return transactions
+    .filter(tx => tx.section === "cdnr")
+    .map(tx => {
+      const noteType = tx.supplyType?.toUpperCase().includes("DEBIT") ? "D" : "C"
+      const taxableValue = tx.taxableAmount
+      return {
+        gstin: tx.gstin || "",
+        noteNumber: tx.invoiceNumber || "",
+        noteDate: tx.issuedAt ? formatDate(tx.issuedAt, "dd/MM/yyyy") : "",
+        noteType,
+        noteValue: round(tx.total),
+        placeOfSupply: tx.placeOfSupply || "",
+        reverseCharge: tx.reverseCharge ? "Y" : "N",
+        rate: tx.gstRate,
+        taxableValue: round(taxableValue > 0 ? taxableValue : tx.total),
+        cgst: round(tx.cgst),
+        sgst: round(tx.sgst),
+        igst: round(tx.igst),
+        cess: round(tx.cess),
+      }
+    })
+}
+
+export function aggregateCDNUR(transactions: ClassifiedTransaction[]): CDNUREntry[] {
+  return transactions
+    .filter(tx => tx.section === "cdnur")
+    .map(tx => {
+      const noteType = tx.supplyType?.toUpperCase().includes("DEBIT") ? "D" : "C"
+      const taxableValue = tx.taxableAmount
+      return {
+        noteNumber: tx.invoiceNumber || "",
+        noteDate: tx.issuedAt ? formatDate(tx.issuedAt, "dd/MM/yyyy") : "",
+        noteType,
+        noteValue: round(tx.total),
+        placeOfSupply: tx.placeOfSupply || "",
+        rate: tx.gstRate,
+        taxableValue: round(taxableValue > 0 ? taxableValue : tx.total),
+        igst: round(tx.igst),
+        cess: round(tx.cess),
+      }
+    })
+}
 
 export function generateGSTR1Report(
   dbTransactions: any[],
@@ -440,6 +644,10 @@ export function generateGSTR1Report(
   const b2b = aggregateB2B(classified)
   const b2cl = aggregateB2CL(classified)
   const b2cs = aggregateB2CS(classified, businessStateCode)
+  const cdnr = aggregateCDNR(classified)
+  const cdnur = aggregateCDNUR(classified)
+  const at = aggregateAT(classified, "at")
+  const atadj = aggregateAT(classified, "atadj")
   const hsn = aggregateHSN(classified)
   const nil = aggregateNil(classified, businessStateCode)
 
@@ -451,13 +659,17 @@ export function generateGSTR1Report(
     exp: { count: 0, value: 0, warnings: 0 },
     nil: { count: 0, value: 0, warnings: 0 },
     exempt: { count: 0, value: 0, warnings: 0 },
+    cdnr: { count: 0, value: 0, warnings: 0 },
+    cdnur: { count: 0, value: 0, warnings: 0 },
+    at: { count: 0, value: 0, warnings: 0 },
+    atadj: { count: 0, value: 0, warnings: 0 },
     skip: { count: 0, value: 0, warnings: 0 },
   }
 
   let totalWarnings = 0
   for (const tx of classified) {
     sectionCounts[tx.section].count++
-    sectionCounts[tx.section].value += tx.total
+    sectionCounts[tx.section].value += tx.taxableAmount
     sectionCounts[tx.section].warnings += tx.warnings.length
     totalWarnings += tx.warnings.length
   }
@@ -471,6 +683,10 @@ export function generateGSTR1Report(
     b2b,
     b2cl,
     b2cs,
+    cdnr,
+    cdnur,
+    at,
+    atadj,
     hsn,
     nil,
     classified,
@@ -538,6 +754,48 @@ export function generateGSTR1JSON(
       iamt: entry.igst,
       csamt: entry.cess,
     })),
+    cdnr: report.cdnr.map(entry => ({
+      ctin: entry.gstin,
+      nt_num: entry.noteNumber,
+      nt_dt: entry.noteDate,
+      ntty: entry.noteType,
+      val: entry.noteValue,
+      pos: getStateCode(entry.placeOfSupply),
+      rchrg: entry.reverseCharge,
+      txval: entry.taxableValue,
+      iamt: entry.igst,
+      camt: entry.cgst,
+      samt: entry.sgst,
+      csamt: entry.cess,
+    })),
+    cdnur: report.cdnur.map(entry => ({
+      nt_num: entry.noteNumber,
+      nt_dt: entry.noteDate,
+      ntty: entry.noteType,
+      val: entry.noteValue,
+      pos: getStateCode(entry.placeOfSupply),
+      txval: entry.taxableValue,
+      iamt: entry.igst,
+      csamt: entry.cess,
+    })),
+    at: report.at.map(entry => ({
+      pos: getStateCode(entry.placeOfSupply),
+      rt: entry.rate,
+      ad_amt: entry.grossAdvanceReceived,
+      iamt: entry.igst,
+      camt: entry.cgst,
+      samt: entry.sgst,
+      csamt: entry.cess,
+    })),
+    atadj: report.atadj.map(entry => ({
+      pos: getStateCode(entry.placeOfSupply),
+      rt: entry.rate,
+      ad_amt: entry.grossAdvanceReceived,
+      iamt: entry.igst,
+      camt: entry.cgst,
+      samt: entry.sgst,
+      csamt: entry.cess,
+    })),
     hsn: {
       data: report.hsn.map(entry => ({
         hsn_sc: entry.hsnCode,
@@ -552,13 +810,33 @@ export function generateGSTR1JSON(
         csamt: entry.cess,
       }))
     },
-    nil: {
-      inv: report.nil.map(entry => ({
-        sply_ty: "INTRB2B",
-        nil_amt: entry.nilRatedIntra,
-        expt_amt: entry.exemptedIntra,
-        ngsup_amt: 0,
-      }))
+      nil: {
+      inv: report.nil.flatMap(entry => [
+        {
+          sply_ty: "INTRB2B",
+          nil_amt: entry.nilRatedIntraB2B,
+          expt_amt: entry.exemptedIntraB2B,
+            ngsup_amt: entry.nonGSTIntraB2B,
+        },
+        {
+          sply_ty: "INTRAB2B",
+          nil_amt: entry.nilRatedInterB2B,
+          expt_amt: entry.exemptedInterB2B,
+            ngsup_amt: entry.nonGSTInterB2B,
+        },
+        {
+          sply_ty: "INTRB2C",
+          nil_amt: entry.nilRatedIntraB2C,
+          expt_amt: entry.exemptedIntraB2C,
+            ngsup_amt: entry.nonGSTIntraB2C,
+        },
+        {
+          sply_ty: "INTRAB2C",
+          nil_amt: entry.nilRatedInterB2C,
+          expt_amt: entry.exemptedInterB2C,
+            ngsup_amt: entry.nonGSTInterB2C,
+        },
+      ])
     },
   }
 }
@@ -570,9 +848,44 @@ function round(n: number): number {
 }
 
 function getStateCode(stateName: string): string {
-  if (!stateName) return ""
-  const entry = Object.entries(INDIAN_STATES).find(
-    ([, name]) => name.toLowerCase() === stateName.toLowerCase()
-  )
-  return entry ? entry[0] : ""
+  const resolved = resolveStateCode(stateName)
+  return resolved || stateName.trim() || ""
+}
+
+function resolveStateCode(stateName: string | null | undefined): string | null {
+  if (!stateName) return null
+
+  const normalized = stateName.trim()
+  if (/^\d{2}$/.test(normalized) && INDIAN_STATES[normalized]) {
+    return normalized
+  }
+
+  const prefixedCode = normalized.match(/^(\d{2})\s*[-–—:]/)
+  if (prefixedCode && INDIAN_STATES[prefixedCode[1]]) {
+    return prefixedCode[1]
+  }
+
+  const code = STATE_NAME_TO_CODE[normalized.toLowerCase()] ?? NORMALIZED_STATE_NAME_TO_CODE[normalizeStateKey(normalized)]
+
+  if (code) {
+    return code
+  }
+
+  const embeddedCode = normalized.match(/\b(\d{2})\b/)
+  if (embeddedCode && INDIAN_STATES[embeddedCode[1]]) {
+    return embeddedCode[1]
+  }
+
+  return null
+}
+
+const NORMALIZED_STATE_NAME_TO_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(INDIAN_STATES).map(([code, name]) => [normalizeStateKey(name), code])
+)
+
+function normalizeStateKey(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "")
 }

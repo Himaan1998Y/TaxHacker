@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatNumber } from "@/lib/utils"
 import { generateGSTR3B, generateGSTR3BJSON, GSTR3BSummary } from "@/lib/gstr3b"
+import { getIndianFY } from "@/lib/indian-fy"
 import { AlertTriangle, Download, FileText, IndianRupee } from "lucide-react"
 
 type Props = {
@@ -29,6 +30,7 @@ export function GSTR3BReport({ transactions, businessGSTIN, businessStateCode }:
   const now = new Date()
   const [month, setMonth] = useState(String(now.getMonth()))
   const [year, setYear] = useState(String(now.getFullYear()))
+  const fy = getIndianFY(new Date(Number(year), parseInt(month), 1))
 
   const periodTransactions = useMemo(() => {
     const m = parseInt(month)
@@ -103,7 +105,7 @@ export function GSTR3BReport({ transactions, businessGSTIN, businessStateCode }:
       {/* GSTIN */}
       {businessGSTIN ? (
         <div className="text-sm text-muted-foreground">
-          GSTIN: <strong>{businessGSTIN}</strong> | Period: <strong>{MONTHS[parseInt(month)]} {year}</strong>
+          GSTIN: <strong>{businessGSTIN}</strong> | Period: <strong>{MONTHS[parseInt(month)]} {year}</strong> | FY: <strong>{fy.year}</strong>
         </div>
       ) : (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">

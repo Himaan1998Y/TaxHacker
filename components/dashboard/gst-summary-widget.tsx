@@ -1,72 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatNumber } from "@/lib/utils"
 import { getCurrentUser } from "@/lib/auth"
-import { getTransactions, TransactionFilters } from "@/models/transactions"
+import { getGSTSummary, type TransactionFilters } from "@/models/transactions"
 import { IndianRupee } from "lucide-react"
-
-type GSTSlabSummary = {
-  rate: number
-  inputGST: number
-  outputGST: number
-}
-
-function aggregateGST(transactions: any[]): {
-  slabs: GSTSlabSummary[]
-  totalInput: number
-  totalOutput: number
-  netPayable: number
-} {
-  const slabMap: Record<number, { input: number; output: number }> = {}
-
-  for (const tx of transactions) {
-    const extra = tx.extra as Record<string, any> | null
-    if (!extra) continue
-
-    const gstRate = Number(extra.gst_rate) || 0
-    if (gstRate <= 0) continue
-
-    const cgst = Number(extra.cgst) || 0
-    const sgst = Number(extra.sgst) || 0
-    const igst = Number(extra.igst) || 0
-    const totalGST = cgst + sgst + igst
-
-    if (totalGST <= 0) continue
-
-    if (!slabMap[gstRate]) {
-      slabMap[gstRate] = { input: 0, output: 0 }
-    }
-
-    if (tx.type === "expense") {
-      slabMap[gstRate].input += totalGST
-    } else {
-      slabMap[gstRate].output += totalGST
-    }
-  }
-
-  const slabs = Object.entries(slabMap)
-    .map(([rate, data]) => ({
-      rate: Number(rate),
-      inputGST: Math.round(data.input * 100) / 100,
-      outputGST: Math.round(data.output * 100) / 100,
-    }))
-    .sort((a, b) => a.rate - b.rate)
-
-  const totalInput = slabs.reduce((sum, s) => sum + s.inputGST, 0)
-  const totalOutput = slabs.reduce((sum, s) => sum + s.outputGST, 0)
-
-  return {
-    slabs,
-    totalInput: Math.round(totalInput * 100) / 100,
-    totalOutput: Math.round(totalOutput * 100) / 100,
-    netPayable: Math.round((totalOutput - totalInput) * 100) / 100,
-  }
-}
 
 export async function GSTSummaryWidget({ filters }: { filters: TransactionFilters }) {
   const user = await getCurrentUser()
-  const { transactions } = await getTransactions(user.id, filters)
-
-  const gst = aggregateGST(transactions)
+  // PERFORMANCE: DB-side aggregation via getGSTSummary() instead of
+  // loading every transaction with its JSON `extra` column into memory.
+  const gst = await getGSTSummary(user.id, filters)
 
   // Don't render if no GST data
   if (gst.slabs.length === 0) return null

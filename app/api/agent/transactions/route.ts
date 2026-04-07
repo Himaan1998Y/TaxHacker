@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { TransactionType } from "@/prisma/client"
 import { authenticateAgent } from "../auth"
 import {
   getTransactions,
@@ -22,6 +23,12 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(params.get("page") || "1"))
   const limit = Math.min(200, Math.max(1, parseInt(params.get("limit") || "50")))
 
+  const typeParam = params.get("type")
+  const parsedType =
+    typeParam && Object.values(TransactionType).includes(typeParam as TransactionType)
+      ? (typeParam as TransactionType)
+      : undefined
+
   const filters: TransactionFilters = {
     search: params.get("search") || undefined,
     dateFrom: params.get("dateFrom") || undefined,
@@ -29,7 +36,7 @@ export async function GET(req: NextRequest) {
     ordering: params.get("ordering") || undefined,
     categoryCode: params.get("categoryCode") || undefined,
     projectCode: params.get("projectCode") || undefined,
-    type: params.get("type") || undefined,
+    type: parsedType,
   }
 
   const { transactions, total } = await getTransactions(user.id, filters, {
@@ -77,7 +84,9 @@ export async function POST(req: NextRequest) {
       merchant: (body.merchant as string) || null,
       total: body.total != null ? Number(body.total) : null,
       currencyCode: (body.currencyCode as string) || "INR",
-      type: (body.type as string) || "expense",
+      type: (Object.values(TransactionType).includes(body.type as TransactionType)
+        ? (body.type as TransactionType)
+        : TransactionType.expense),
       categoryCode: (body.categoryCode as string) || null,
       projectCode: (body.projectCode as string) || null,
       issuedAt: body.issuedAt ? new Date(body.issuedAt as string) : new Date(),

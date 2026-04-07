@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 const envSchema = z.object({
-  BASE_URL: z.string().url().default("http://localhost:7331"),
+  BASE_URL: z.string().optional(),
   PORT: z.string().default("7331"),
   SELF_HOSTED_MODE: z.enum(["true", "false"]).default("true"),
   ENCRYPTION_KEY: z.string().length(64).optional(),
@@ -26,10 +26,44 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().default(""),
 })
 
-const env = envSchema.parse(process.env)
+const rawEnv = envSchema.parse(process.env)
 
-if (process.env.NODE_ENV === "production" && env.BETTER_AUTH_SECRET === "please-set-your-key-here") {
-  console.warn("WARNING: Using default BETTER_AUTH_SECRET in production. Set a unique secret via environment variable.")
+function isValidUrl(value: string): boolean {
+  try {
+    new URL(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const resolvedBaseUrl = rawEnv.BASE_URL && isValidUrl(rawEnv.BASE_URL)
+  ? rawEnv.BASE_URL
+  : `http://localhost:${rawEnv.PORT}`
+
+const isProductionRuntime = process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
+
+if (isProductionRuntime) {
+  if (!process.env.ENCRYPTION_KEY) {
+    throw new Error(
+      "[STARTUP ERROR] ENCRYPTION_KEY is required in production. Generate with: openssl rand -hex 32"
+    )
+  }
+  if (rawEnv.BETTER_AUTH_SECRET === "please-set-your-key-here") {
+    throw new Error(
+      "[STARTUP ERROR] BETTER_AUTH_SECRET is using the default insecure value. Set a unique secret via environment variable."
+    )
+  }
+  if (rawEnv.BASE_URL && !isValidUrl(rawEnv.BASE_URL)) {
+    throw new Error(
+      "[STARTUP ERROR] BASE_URL is invalid. Set BASE_URL to a valid absolute URL in production."
+    )
+  }
+}
+
+const env = {
+  ...rawEnv,
+  BASE_URL: resolvedBaseUrl,
 }
 
 const config = {

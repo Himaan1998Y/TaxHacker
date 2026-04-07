@@ -1,0 +1,96 @@
+
+> taxhacker@0.5.5 build F:\TaxHacker
+> next build
+
+   ▲ Next.js 15.5.14
+   - Experiments (use with caution):
+     · serverActions
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 5.4min
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/33) ...
+   Generating static pages (8/33) 
+   Generating static pages (16/33) 
+   Generating static pages (24/33) 
+ ✓ Generating static pages (33/33)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ƒ /                                      175 B         179 kB
+├ ○ /_not-found                             1 kB         173 kB
+├ ƒ /api/agent/analyze                     247 B         172 kB
+├ ƒ /api/agent/digest                      247 B         172 kB
+├ ƒ /api/agent/embeddings                  247 B         172 kB
+├ ƒ /api/agent/files                       247 B         172 kB
+├ ƒ /api/agent/gstr1                       247 B         172 kB
+├ ƒ /api/agent/gstr3b                      247 B         172 kB
+├ ƒ /api/agent/search                      247 B         172 kB
+├ ƒ /api/agent/setup                       247 B         172 kB
+├ ƒ /api/agent/transactions                247 B         172 kB
+├ ƒ /api/agent/transactions/[id]           247 B         172 kB
+├ ƒ /api/auth/[...all]                     247 B         172 kB
+├ ƒ /api/currency                          247 B         172 kB
+├ ƒ /api/health                            247 B         172 kB
+├ ƒ /api/progress/[progressId]             247 B         172 kB
+├ ƒ /api/self-hosted-auth                  247 B         172 kB
+├ ƒ /api/stripe/checkout                   247 B         172 kB
+├ ƒ /api/stripe/portal                     247 B         172 kB
+├ ƒ /api/stripe/webhook                    247 B         172 kB
+├ ƒ /apps                                  176 B         174 kB
+├ ƒ /apps/gstr1                          7.72 kB         233 kB
+├ ƒ /apps/gstr1/export                     247 B         172 kB
+├ ƒ /apps/gstr3b                         6.54 kB         232 kB
+├ ƒ /apps/invoices                       19.1 kB         261 kB
+├ ƒ /cloud                                 176 B         174 kB
+├ ƒ /cloud/payment/success               1.18 kB         260 kB
+├ ƒ /dashboard                           6.84 kB         254 kB
+├ ○ /docs/ai                               247 B         172 kB
+├ ○ /docs/cookie                           247 B         172 kB
+├ ○ /docs/faq                              247 B         172 kB
+├ ○ /docs/gst-setup                        176 B         174 kB
+├ ○ /docs/gstr1-guide                      247 B         172 kB
+├ ○ /docs/privacy_policy                   247 B         172 kB
+├ ○ /docs/terms                            247 B         172 kB
+├ ƒ /enter                               1.47 kB         259 kB
+├ ƒ /export/tally                          247 B         172 kB
+├ ƒ /export/transactions                   247 B         172 kB
+├ ƒ /files                                 247 B         172 kB
+├ ƒ /files/download/[fileId]               247 B         172 kB
+├ ƒ /files/preview/[fileId]                247 B         172 kB
+├ ƒ /files/static/[filename]               247 B         172 kB
+├ ƒ /import/csv                          4.21 kB         190 kB
+├ ○ /robots.txt                            247 B         172 kB
+├ ƒ /self-hosted                         24.4 kB         267 kB
+├ ○ /self-hosted-login                   1.12 kB         173 kB
+├ ƒ /self-hosted/redirect                  247 B         172 kB
+├ ƒ /settings                            2.13 kB         244 kB
+├ ƒ /settings/audit-log                    247 B         172 kB
+├ ƒ /settings/backups                    4.58 kB         190 kB
+├ ƒ /settings/backups/data                 247 B         172 kB
+├ ƒ /settings/business                   4.85 kB         247 kB
+├ ƒ /settings/categories                   128 B         190 kB
+├ ƒ /settings/currencies                   128 B         190 kB
+├ ƒ /settings/danger                       247 B         172 kB
+├ ƒ /settings/fields                       128 B         190 kB
+├ ƒ /settings/llm                        18.7 kB         263 kB
+├ ƒ /settings/profile                    5.14 kB         295 kB
+├ ƒ /settings/projects                     128 B         190 kB
+├ ○ /sitemap.xml                           247 B         172 kB
+├ ƒ /transactions                        11.3 kB         281 kB
+├ ƒ /transactions/[transactionId]        3.14 kB         270 kB
+└ ƒ /unsorted                            8.03 kB         270 kB
++ First Load JS shared by all             172 kB
+  ├ chunks/2684-d9a6ac883cfacb40.js       116 kB
+  ├ chunks/dc9bfb29-4b0b6c4d29f60882.js  54.2 kB
+  └ other shared chunks (total)          2.08 kB
+
+
+ƒ Middleware                              129 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
