@@ -14,20 +14,23 @@ ENV NODE_OPTIONS="--max_old_space_size=4096"
 # Install dependencies required for Prisma and sharp
 RUN apt-get update && apt-get install -y openssl python3 make g++
 
+# Install pnpm
+RUN npm install -g pnpm
+
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files (including pnpm lockfile)
+COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci
+# Install dependencies using pnpm with frozen lockfile
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN pnpm run build
 
 # Production stage
 FROM base
@@ -52,7 +55,7 @@ RUN mkdir -p /app/upload /app/data
 # Copy built standalone output (much smaller than full node_modules)
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/package.json ./
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
