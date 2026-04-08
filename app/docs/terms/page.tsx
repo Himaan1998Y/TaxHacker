@@ -58,7 +58,7 @@ export default async function Terms() {
       <h2 className="text-2xl font-semibold text-slate-800 mb-4">3. Subscriptions & Payments</h2>
       <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">
         <li>
-          Paid plans are managed through <strong className="text-slate-800">Stripe</strong>, and all subscriptions{" "}
+          Paid plans are managed through <strong className="text-slate-800">Razorpay</strong>, and all subscriptions{" "}
           <strong className="text-slate-800">renew automatically</strong> unless cancelled.
         </li>
         <li>You may cancel your subscription or delete your account at any time via your dashboard.</li>

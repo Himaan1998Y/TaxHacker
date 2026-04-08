@@ -4,7 +4,7 @@ import { PricingCard } from "@/components/auth/pricing-card"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import config from "@/lib/config"
-import { PLANS } from "@/lib/stripe"
+import { PLANS } from "@/lib/razorpay"
 import { formatBytes, formatNumber } from "@/lib/utils"
 import { formatDate } from "date-fns"
 import { BrainCog, CalendarSync, HardDrive } from "lucide-react"
@@ -48,13 +48,13 @@ export function SubscriptionPlan({ user }: { user: User }) {
           </div>
 
           <div className="space-y-4 mt-6 text-center">
-            {user.stripeCustomerId && (
+            {user.razorpayCustomerId && (
               <Button asChild className="w-full">
-                <Link href="/api/stripe/portal">Manage Subscription</Link>
+                <Link href="mailto:support@taxhackerindia.in?subject=Cancel%20TaxHacker%20Subscription">Manage Subscription</Link>
               </Button>
             )}
 
-            {!user.stripeCustomerId && user.membershipExpiresAt && (
+            {!user.razorpayCustomerId && user.membershipExpiresAt && (
               <Button asChild className="w-full">
                 <Link href="/cloud">Buy Subscription</Link>
               </Button>

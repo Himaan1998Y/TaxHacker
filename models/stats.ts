@@ -460,3 +460,111 @@ export const getDetailedTimeSeriesStats = cache(
       .sort((a, b) => a.date.getTime() - b.date.getTime())
   }
 )
+
+// ──────────────────────────────────────────────────────────────────
+// GST Summary (per-component breakdown for GSTR-3B table 3)
+// ──────────────────────────────────────────────────────────────────
+
+export type GSTSummaryResult = {
+  totalOutput: number // rupees — output GST collected (income txns)
+  totalInput: number // rupees — input GST paid / ITC available (expense txns)
+  netPayable: number // rupees — positive = payable, negative = refund
+  slabs: Array<{
+    rate: number
+    inputCGST: number
+    inputSGST: number
+    inputIGST: number
+    outputCGST: number
+    outputSGST: number
+    outputIGST: number
+  }>
+}
+
+export async function getGSTSummary(
+  userId: string,
+  filters?: { dateFrom?: string; dateTo?: string }
+): Promise<GSTSummaryResult> {
+  type RawGSTRow = {
+    type: string
+    rate: number
+    cgst: bigint
+    sgst: bigint
+    igst: bigint
+  }
+
+  const rows = await prisma.$queryRaw<RawGSTRow[]>`
+    SELECT
+      type::text AS type,
+      COALESCE(gst_rate, 0)::float AS rate,
+      SUM(COALESCE(cgst, 0))::bigint AS cgst,
+      SUM(COALESCE(sgst, 0))::bigint AS sgst,
+      SUM(COALESCE(igst, 0))::bigint AS igst
+    FROM transactions
+    WHERE user_id = ${userId}::uuid
+      AND status = 'active'
+      AND gst_rate IS NOT NULL
+      AND gst_rate > 0
+      ${filters?.dateFrom ? Prisma.sql`AND issued_at >= ${new Date(filters.dateFrom)}` : Prisma.empty}
+      ${filters?.dateTo ? Prisma.sql`AND issued_at <= ${new Date(filters.dateTo)}` : Prisma.empty}
+    GROUP BY type, gst_rate
+    ORDER BY type, gst_rate
+  `
+
+  // Merge rows into per-rate slabs
+  const slabMap = new Map<
+    number,
+    {
+      inputCGST: number
+      inputSGST: number
+      inputIGST: number
+      outputCGST: number
+      outputSGST: number
+      outputIGST: number
+    }
+  >()
+
+  for (const row of rows) {
+    const rate = Number(row.rate)
+    if (rate <= 0) continue
+
+    const existing = slabMap.get(rate) || {
+      inputCGST: 0,
+      inputSGST: 0,
+      inputIGST: 0,
+      outputCGST: 0,
+      outputSGST: 0,
+      outputIGST: 0,
+    }
+
+    // Amounts from DB are in paise — divide by 100 for rupees
+    const cgst = Number(row.cgst) / 100
+    const sgst = Number(row.sgst) / 100
+    const igst = Number(row.igst) / 100
+
+    if (row.type === "expense") {
+      existing.inputCGST += cgst
+      existing.inputSGST += sgst
+      existing.inputIGST += igst
+    } else if (row.type === "income") {
+      existing.outputCGST += cgst
+      existing.outputSGST += sgst
+      existing.outputIGST += igst
+    }
+
+    slabMap.set(rate, existing)
+  }
+
+  const slabs = Array.from(slabMap.entries())
+    .map(([rate, data]) => ({ rate, ...data }))
+    .sort((a, b) => a.rate - b.rate)
+
+  const totalInput = slabs.reduce((sum, s) => sum + s.inputCGST + s.inputSGST + s.inputIGST, 0)
+  const totalOutput = slabs.reduce((sum, s) => sum + s.outputCGST + s.outputSGST + s.outputIGST, 0)
+
+  return {
+    totalOutput: Math.round(totalOutput * 100) / 100,
+    totalInput: Math.round(totalInput * 100) / 100,
+    netPayable: Math.round((totalOutput - totalInput) * 100) / 100,
+    slabs,
+  }
+}

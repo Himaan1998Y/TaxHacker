@@ -11,7 +11,7 @@ import {
 import { SidebarMenuButton } from "@/components/ui/sidebar"
 import { UserProfile } from "@/lib/auth"
 import { authClient } from "@/lib/auth-client"
-import { PLANS } from "@/lib/stripe"
+import { PLANS } from "@/lib/razorpay"
 import { formatBytes } from "@/lib/utils"
 import { CreditCard, LogOut, MoreVertical, Settings, Sparkles, User } from "lucide-react"
 import Link from "next/link"
@@ -80,7 +80,7 @@ export default function SidebarUser({ profile, isSelfHosted }: { profile: UserPr
           </DropdownMenuItem>
           {!isSelfHosted && (
             <DropdownMenuItem asChild>
-              <Link href="/api/stripe/portal" className="flex items-center gap-2">
+              <Link href="mailto:support@taxhackerindia.in?subject=Subscription%20Management" className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
                 Billing
               </Link>

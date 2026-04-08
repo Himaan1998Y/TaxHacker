@@ -24,7 +24,7 @@ model User {
   transactions        Transaction[]
   createdAt           DateTime          @default(now()) @map("created_at")
   updatedAt           DateTime          @updatedAt @map("updated_at")
-  stripeCustomerId    String?           @map("stripe_customer_id")
+  razorpayCustomerId  String?           @map("razorpay_customer_id")
   membershipPlan      String?           @map("membership_plan")
   membershipExpiresAt DateTime?         @map("membership_expires_at")
   emailVerified       Boolean           @default(false) @map("is_email_verified")

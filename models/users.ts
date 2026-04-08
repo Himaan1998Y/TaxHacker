@@ -54,9 +54,9 @@ export const getUserByEmail = cache(async (email: string) => {
   })
 })
 
-export const getUserByStripeCustomerId = cache(async (customerId: string) => {
+export const getUserByRazorpayCustomerId = cache(async (customerId: string) => {
   return await prisma.user.findFirst({
-    where: { stripeCustomerId: customerId },
+    where: { razorpayCustomerId: customerId },
   })
 })
 

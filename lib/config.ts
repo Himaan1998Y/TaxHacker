@@ -22,8 +22,12 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().default("please-set-your-resend-api-key-here"),
   RESEND_FROM_EMAIL: z.string().default("TaxHacker <user@localhost>"),
   RESEND_AUDIENCE_ID: z.string().default(""),
-  STRIPE_SECRET_KEY: z.string().default(""),
-  STRIPE_WEBHOOK_SECRET: z.string().default(""),
+  RAZORPAY_KEY_ID: z.string().default(""),
+  RAZORPAY_KEY_SECRET: z.string().default(""),
+  RAZORPAY_WEBHOOK_SECRET: z.string().default(""),
+  RAZORPAY_PRO_PLAN_ID: z.string().default(""),
+  RAZORPAY_PRO_YEARLY_PLAN_ID: z.string().default(""),
+  NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().default(""),
 })
 
 const rawEnv = envSchema.parse(process.env)
@@ -110,10 +114,11 @@ const config = {
     loginUrl: "/enter",
     disableSignup: env.DISABLE_SIGNUP === "true" || env.SELF_HOSTED_MODE === "true",
   },
-  stripe: {
-    secretKey: env.STRIPE_SECRET_KEY,
-    webhookSecret: env.STRIPE_WEBHOOK_SECRET,
-    paymentSuccessUrl: `${env.BASE_URL}/cloud/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+  razorpay: {
+    keyId: env.RAZORPAY_KEY_ID,
+    keySecret: env.RAZORPAY_KEY_SECRET,
+    webhookSecret: env.RAZORPAY_WEBHOOK_SECRET,
+    paymentSuccessUrl: `${env.BASE_URL}/cloud/payment/success`,
     paymentCancelUrl: `${env.BASE_URL}/cloud`,
   },
   email: {

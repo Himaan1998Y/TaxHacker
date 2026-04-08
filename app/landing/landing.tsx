@@ -21,12 +21,17 @@ export default function LandingPage() {
             </div>
             <ColoredText className="text-2xl font-bold">TaxHacker India</ColoredText>
           </Link>
-          <Link
-            href="/enter"
-            className="cursor-pointer font-medium px-4 py-2 rounded-full border-2 border-gradient-to-r from-pink-300 to-indigo-300 hover:from-pink-400 hover:to-indigo-400 bg-white/80 hover:bg-white transition-all duration-300 hover:scale-105 text-xs md:text-sm"
-          >
-            Log In
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/pricing" className="text-sm font-medium hover:text-primary transition-colors">
+              Pricing
+            </Link>
+            <Link
+              href="/enter"
+              className="cursor-pointer font-medium px-4 py-2 rounded-full border-2 border-gradient-to-r from-pink-300 to-indigo-300 hover:from-pink-400 hover:to-indigo-400 bg-white/80 hover:bg-white transition-all duration-300 hover:scale-105 text-xs md:text-sm"
+            >
+              Log In
+            </Link>
+          </div>
         </div>
       </header>
 

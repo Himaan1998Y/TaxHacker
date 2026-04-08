@@ -86,7 +86,7 @@ export default async function Cookie() {
             </tr>
             <tr className="bg-slate-50">
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
-                <strong className="text-slate-800">Stripe</strong>
+                <strong className="text-slate-800">Razorpay</strong>
               </td>
               <td className="border border-slate-200 px-6 py-4 text-sm text-slate-700">
                 Payment processing (subscriptions, billing)
