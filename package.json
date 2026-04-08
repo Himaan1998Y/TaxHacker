@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 7331 --turbopack",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "node node_modules/prisma/build/index.js migrate deploy && node server.js",
     "lint": "next lint",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "backfill:business-bank-details": "node ./scripts/backfill-business-bank-details.js"
+    "backfill:business-bank-details": "node ./scripts/backfill-business-bank-details.js",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

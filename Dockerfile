@@ -26,10 +26,16 @@ COPY prisma ./prisma/
 # Install dependencies using pnpm with frozen lockfile
 RUN pnpm install --frozen-lockfile
 
+# Explicitly generate Prisma client (pnpm ignores package build scripts by default)
+RUN pnpm exec prisma generate
+
 # Copy source code
 COPY . .
 
-# Build the application
+# Rebuild sharp for the Linux build environment (pnpm ignored its postinstall)
+RUN pnpm rebuild sharp || true
+
+# Build the application (runs prisma generate again via build script, then next build)
 RUN pnpm run build
 
 # Production stage
