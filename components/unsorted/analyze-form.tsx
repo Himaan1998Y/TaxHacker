@@ -21,6 +21,10 @@ import { Category, Currency, Field, File, Project } from "@/prisma/client"
 import { format } from "date-fns"
 import { AlertTriangle, ArrowDownToLine, Brain, ChevronDown, ChevronRight, CheckCircle2, Loader2, Trash2, XCircle } from "lucide-react"
 import { startTransition, useActionState, useEffect, useMemo, useState } from "react"
+import { DuplicateModal } from "@/components/transactions/duplicate-modal"
+import { ActionState } from "@/lib/actions"
+import { deleteTransactionAction } from "@/app/(app)/transactions/actions"
+import { Transaction } from "@/prisma/client"
 
 // Field grouping for collapsible sections
 const GST_FIELD_CODES = new Set(["gstin", "gst_rate", "cgst", "sgst", "igst", "cess", "hsn_sac_code", "place_of_supply", "supply_type", "reverse_charge"])
@@ -49,6 +53,9 @@ export default function AnalyzeForm({
   const [deleteState, deleteAction, isDeleting] = useActionState(deleteUnsortedFileAction, null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
+  const [duplicateData, setDuplicateData] = useState<ActionState<Transaction>["duplicateData"] | null>(null)
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
 
   // Collapsible section state
   const [gstOpen, setGstOpen] = useState(false)
@@ -164,11 +171,46 @@ export default function AnalyzeForm({
         showNotification({ code: "global.banner", message: "Saved!", type: "success" })
         showNotification({ code: "sidebar.transactions", message: "new" })
         setTimeout(() => showNotification({ code: "sidebar.transactions", message: "" }), 3000)
+      } else if (result.error === "DUPLICATE_FOUND" && result.duplicateData) {
+        setDuplicateData(result.duplicateData)
+        setPendingFormData(formData)
+        setIsDuplicateModalOpen(true)
       } else {
         setSaveError(result.error ? result.error : "Something went wrong...")
         showNotification({ code: "global.banner", message: "Failed to save", type: "failed" })
       }
     })
+  }
+
+  const handleForceSave = () => {
+    if (!pendingFormData) return
+    setIsDuplicateModalOpen(false)
+    const newFormData = new FormData()
+    for (const [key, value] of pendingFormData.entries()) {
+      newFormData.append(key, value)
+    }
+    newFormData.append("forceSave", "true")
+    saveAsTransaction(newFormData)
+  }
+
+  const handleCancelDuplicate = () => {
+    setIsDuplicateModalOpen(false)
+    setPendingFormData(null)
+    setDuplicateData(null)
+  }
+
+  const handleReplaceOld = async () => {
+    if (!duplicateData || !pendingFormData) return
+    setIsDuplicateModalOpen(false)
+    setIsSaving(true)
+    try {
+      await deleteTransactionAction(null, duplicateData.existingTransaction.id)
+      await saveAsTransaction(pendingFormData)
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to replace transaction")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const startAnalyze = async () => {
@@ -547,6 +589,15 @@ export default function AnalyzeForm({
           {saveError && <FormError>{saveError}</FormError>}
         </div>
       </form>
+
+      <DuplicateModal
+        isOpen={isDuplicateModalOpen}
+        onOpenChange={setIsDuplicateModalOpen}
+        duplicateData={duplicateData}
+        onKeepBoth={handleForceSave}
+        onReplaceOld={handleReplaceOld}
+        onCancel={handleCancelDuplicate}
+      />
     </>
   )
 }

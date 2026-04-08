@@ -65,7 +65,8 @@ export async function saveTransactionsAction(
         }
       }
 
-      await createTransaction(user.id, transactionData)
+      // Force save on CSV import — no dedup check (user is bulk importing)
+      await createTransaction(user.id, transactionData, true)
     }
 
     revalidatePath("/import/csv")

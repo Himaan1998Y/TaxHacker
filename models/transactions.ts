@@ -290,8 +290,47 @@ async function syncTransactionFiles(id: string, userId: string, fileIds: string[
   }
 }
 
-export const createTransaction = async (userId: string, data: TransactionData): Promise<Transaction> => {
+export type CreateTransactionSuccess = {
+  status: "success"
+  transaction: Transaction
+}
+
+export type CreateTransactionDuplicate = {
+  status: "duplicate_found"
+  existingTransaction: Transaction
+  newTransactionData: TransactionData
+}
+
+export type CreateTransactionResult = CreateTransactionSuccess | CreateTransactionDuplicate
+
+export const createTransaction = async (
+  userId: string,
+  data: TransactionData,
+  forceSave: boolean = false
+): Promise<CreateTransactionResult> => {
   const { standard, extra } = await splitTransactionDataExtraFields(data, userId)
+  const currencyCode = standard.currencyCode || "USD"
+
+  // Deduplication check — skip if forceSave
+  if (!forceSave && standard.total && standard.merchant && standard.issuedAt) {
+    const existingTransaction = await prisma.transaction.findFirst({
+      where: {
+        userId,
+        total: standard.total,
+        merchant: standard.merchant,
+        issuedAt: standard.issuedAt,
+        currencyCode,
+      },
+    })
+
+    if (existingTransaction) {
+      return {
+        status: "duplicate_found" as const,
+        existingTransaction,
+        newTransactionData: data,
+      }
+    }
+  }
 
   const transaction = await prisma.transaction.create({
     data: {
@@ -313,7 +352,39 @@ export const createTransaction = async (userId: string, data: TransactionData): 
   // Generate embedding async (non-blocking, best-effort)
   embedTransactionAsync(transaction)
 
-  return transaction
+  return { status: "success" as const, transaction }
+}
+
+export const duplicateTransaction = async (id: string, userId: string): Promise<Transaction> => {
+  const original = await getTransactionById(id, userId)
+  if (!original) throw new Error("Transaction not found")
+
+  const {
+    id: _id,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    files: _files,
+    ...rest
+  } = original as Transaction & { category?: unknown; project?: unknown }
+
+  const { category: _category, project: _project, ...transactionData } = rest as typeof rest & {
+    category?: unknown
+    project?: unknown
+  }
+
+  const newTx = await prisma.transaction.create({
+    data: {
+      ...transactionData,
+      name: original.name ? `${original.name} (Copy)` : "Copy",
+      files: [],
+      items: original.items,
+      extra: original.extra,
+      user: { connect: { id: userId } },
+    } as unknown as Prisma.TransactionCreateInput,
+  })
+
+  logAudit(userId, "transaction", newTx.id, "create", null, sanitizeForAudit(newTx as unknown as Record<string, unknown>))
+  return newTx
 }
 
 export const updateTransaction = async (id: string, userId: string, data: TransactionData): Promise<Transaction> => {

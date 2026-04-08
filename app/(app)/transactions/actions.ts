@@ -12,9 +12,11 @@ import {
 } from "@/lib/files"
 import { updateField } from "@/models/fields"
 import { createFile, deleteFile } from "@/models/files"
+import { parseFilesArray } from "@/lib/db-compat"
 import {
   bulkReverseTransactions,
   createTransaction,
+  duplicateTransaction,
   reverseTransaction,
   getTransactionById,
   updateTransaction,
@@ -39,10 +41,14 @@ export async function createTransactionAction(
       return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
     }
 
-    const transaction = await createTransaction(user.id, validatedForm.data as import("@/models/transactions").TransactionData)
+    const result = await createTransaction(user.id, validatedForm.data as import("@/models/transactions").TransactionData)
+
+    if (result.status === "duplicate_found") {
+      return { success: false, error: "DUPLICATE_FOUND", duplicateData: { existingTransaction: result.existingTransaction, newTransactionData: result.newTransactionData as Record<string, unknown> } }
+    }
 
     revalidatePath("/transactions")
-    return { success: true, data: transaction }
+    return { success: true, data: result.transaction }
   } catch (error) {
     console.error("Failed to create transaction:", error)
     return { success: false, error: "Failed to create transaction" }
@@ -109,7 +115,7 @@ export async function deleteTransactionFileAction(
   await updateTransactionFiles(
     transactionId,
     user.id,
-    transaction.files ? (transaction.files as string[]).filter((id) => id !== fileId) : []
+    parseFilesArray(transaction.files).filter((id) => id !== fileId)
   )
 
   await deleteFile(fileId, user.id)
@@ -196,9 +202,7 @@ export async function uploadTransactionFilesAction(formData: FormData): Promise<
       await updateTransactionFiles(
         transactionId,
         user.id,
-        transaction.files
-          ? [...(transaction.files as string[]), ...fileRecords.map((file) => file.id)]
-          : fileRecords.map((file) => file.id)
+        [...parseFilesArray(transaction.files), ...fileRecords.map((file) => file.id)]
       )
 
       // Reconcile reserved usage against actual disk usage
@@ -249,5 +253,19 @@ export async function updateFieldVisibilityAction(fieldCode: string, isVisible: 
   } catch (error) {
     console.error("Failed to update field visibility:", error)
     return { success: false, error: "Failed to update field visibility" }
+  }
+}
+
+export async function duplicateTransactionAction(
+  transactionId: string
+): Promise<ActionState<Transaction>> {
+  try {
+    const user = await getCurrentUser()
+    const newTransaction = await duplicateTransaction(transactionId, user.id)
+    revalidatePath("/transactions")
+    return { success: true, data: newTransaction }
+  } catch (error) {
+    console.error("Failed to duplicate transaction:", error)
+    return { success: false, error: "Failed to duplicate transaction" }
   }
 }

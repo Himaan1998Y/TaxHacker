@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const transaction = await createTransaction(user.id, {
+    const result = await createTransaction(user.id, {
       name: (body.name as string) || null,
       merchant: (body.merchant as string) || null,
       total: body.total != null ? Number(body.total) : null,
@@ -94,9 +94,10 @@ export async function POST(req: NextRequest) {
       note: (body.note as string) || null,
       files: body.files as string[] | undefined,
       extra: body.extra as Record<string, unknown> | undefined,
-    })
+    }, true) // forceSave=true for Agent API
 
-    return NextResponse.json({ transaction }, { status: 201 })
+    const tx = result.status === "success" ? result.transaction : result.existingTransaction
+    return NextResponse.json({ transaction: tx }, { status: 201 })
   } catch (error) {
     console.error("Agent API: create transaction error:", error)
     return NextResponse.json(
