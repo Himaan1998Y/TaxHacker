@@ -38,44 +38,30 @@ RUN pnpm rebuild sharp || true
 # Build the application (runs prisma generate again via build script, then next build)
 RUN pnpm run build
 
-# Materialise pnpm virtual-store entries so that COPY --from=builder works in the
-# production stage. pnpm stores packages as symlinks into node_modules/.pnpm/;
-# Docker cannot resolve those symlinks across build stages.
-#
-# Strategy: always mkdir the target dirs (so COPY never errors on "not found"),
-# then populate them by copying real content where it exists.
-
-# .prisma – Prisma generates into the pnpm store, not into node_modules/.prisma directly.
-RUN mkdir -p node_modules/.prisma && \
-    dir=$(find node_modules/.pnpm -name ".prisma" -type d 2>/dev/null | head -1); \
-    if [ -n "$dir" ]; then cp -rL "$dir"/. node_modules/.prisma/ 2>/dev/null; fi; \
-    true
-
-# @img – sharp's native bindings scope; entries are pnpm symlinks → dereference them.
-RUN mkdir -p node_modules/@img && \
-    for link in node_modules/@img/*; do \
-      [ -L "$link" ] || continue; \
-      real=$(readlink -f "$link") || continue; \
-      tmp="/tmp/_img_$(basename "$link")"; \
-      cp -rL "$real" "$tmp" 2>/dev/null && rm -f "$link" && mv "$tmp" "$link" || true; \
+# Materialise every package that the production stage will COPY --from=builder.
+# pnpm stores node_modules entries as symlinks into node_modules/.pnpm/.
+# Docker cannot resolve symlinks across build stages, so dereference them all here
+# in one pass rather than patching per-package on each failure.
+RUN for target in \
+      node_modules/.prisma \
+      node_modules/@prisma \
+      node_modules/@img \
+      node_modules/prisma \
+      node_modules/sharp; \
+    do \
+      [ -e "$target" ] || mkdir -p "$target"; \
+      if [ -L "$target" ]; then \
+        real=$(readlink -f "$target") || continue; \
+        cp -rL "$real" "${target}.real" 2>/dev/null && rm -f "$target" && mv "${target}.real" "$target" || true; \
+      else \
+        for link in "$target"/*; do \
+          [ -L "$link" ] || continue; \
+          real=$(readlink -f "$link") || continue; \
+          tmp="${link}.real"; \
+          cp -rL "$real" "$tmp" 2>/dev/null && rm -f "$link" && mv "$tmp" "$link" || true; \
+        done; \
+      fi; \
     done; \
-    true
-
-# @prisma – client engines; entries are pnpm symlinks → dereference them.
-RUN mkdir -p node_modules/@prisma && \
-    for link in node_modules/@prisma/*; do \
-      [ -L "$link" ] || continue; \
-      real=$(readlink -f "$link") || continue; \
-      tmp="/tmp/_prisma_$(basename "$link")"; \
-      cp -rL "$real" "$tmp" 2>/dev/null && rm -f "$link" && mv "$tmp" "$link" || true; \
-    done; \
-    true
-
-# prisma CLI – the bare prisma package may itself be a symlink.
-RUN if [ -L node_modules/prisma ]; then \
-      real=$(readlink -f node_modules/prisma); \
-      cp -rL "$real" /tmp/_prisma_cli 2>/dev/null && rm -f node_modules/prisma && mv /tmp/_prisma_cli node_modules/prisma; \
-    fi; \
     true
 
 # Production stage
