@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { getCategories } from "@/models/categories"
 import { getFields } from "@/models/fields"
 import { getProjects } from "@/models/projects"
+import { getSettings } from "@/models/settings"
 import { getTransactions, TransactionFilters } from "@/models/transactions"
 import { Download, Plus, Upload } from "lucide-react"
 import { Metadata } from "next"
@@ -28,9 +29,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     limit: TRANSACTIONS_PER_PAGE,
     offset: ((page ?? 1) - 1) * TRANSACTIONS_PER_PAGE,
   })
-  const categories = await getCategories(user.id)
-  const projects = await getProjects(user.id)
-  const fields = await getFields(user.id)
+  const [categories, projects, fields, settings] = await Promise.all([
+    getCategories(user.id),
+    getProjects(user.id),
+    getFields(user.id),
+    getSettings(user.id),
+  ])
 
   // Reset page if user clicks a filter and no transactions are found
   if (page && page > 1 && transactions.length === 0) {
@@ -55,7 +59,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         </div>
       </header>
 
-      <TransactionSearchAndFilters categories={categories} projects={projects} fields={fields} />
+      <TransactionSearchAndFilters
+        categories={categories}
+        projects={projects}
+        fields={fields}
+        taxYearStart={settings.tax_year_start || "04-01"}
+      />
 
       <main>
         <TransactionList transactions={transactions} fields={fields} />

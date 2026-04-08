@@ -108,3 +108,83 @@
 [2026-04-08T09:30:01.264Z] file: f:\TaxHacker\models\stats.ts
 
 [2026-04-08T09:30:29.666Z] file: f:\TaxHacker\models\stats.ts
+
+[2026-04-08T12:04:28.363Z] file: f:\TaxHacker\package.json
+
+[2026-04-08T12:05:19.639Z] file: f:\TaxHacker\package.json
+
+[2026-04-08T16:58:26.670Z] file: f:\TaxHacker\.env.example
+
+[2026-04-08T16:58:34.075Z] file: f:\TaxHacker\.env.example
+
+[2026-04-08T17:19:18.075Z] file: f:\TaxHacker\app\api\health\route.ts
+
+[2026-04-08T17:20:18.059Z] file: f:\TaxHacker\.env.example
+
+[2026-04-08T17:39:09.021Z] file: f:\TaxHacker\Dockerfile
+
+[2026-04-08T17:40:55.411Z] file: f:\TaxHacker\package.json
+
+[2026-04-08T17:41:09.551Z] file: f:\TaxHacker\Dockerfile
+
+[2026-04-08T19:50:31.243Z] file: f:\TaxHacker\package.json
+
+[2026-04-08T20:22:20.788Z] file: f:\TaxHacker\components\transactions\list.tsx
+
+[2026-04-08T20:22:34.018Z] file: f:\TaxHacker\components\transactions\list.tsx
+
+[2026-04-08T20:22:42.039Z] file: f:\TaxHacker\components\transactions\list.tsx
+
+[2026-04-08T20:22:48.081Z] file: f:\TaxHacker\components\transactions\list.tsx
+
+[2026-04-08T20:22:54.843Z] file: f:\TaxHacker\components\transactions\list.tsx
+
+[2026-04-08T20:23:05.736Z] file: f:\TaxHacker\lib\llm-providers.ts
+
+[2026-04-08T20:23:12.679Z] file: f:\TaxHacker\lib\llm-providers.ts
+
+[2026-04-08T20:23:22.089Z] file: f:\TaxHacker\ai\providers\llmProvider.ts
+
+[2026-04-08T20:23:27.844Z] file: f:\TaxHacker\ai\providers\llmProvider.ts
+
+[2026-04-08T20:23:33.815Z] file: f:\TaxHacker\ai\providers\llmProvider.ts
+
+[2026-04-08T20:23:42.639Z] file: f:\TaxHacker\models\settings.ts
+
+[2026-04-08T20:23:54.069Z] file: f:\TaxHacker\models\settings.ts
+
+[2026-04-08T20:24:02.741Z] file: f:\TaxHacker\forms\settings.ts
+
+[2026-04-08T20:24:14.872Z] file: f:\TaxHacker\components\settings\llm-settings-form.tsx
+
+[2026-04-08T20:24:22.580Z] file: f:\TaxHacker\components\settings\llm-settings-form.tsx
+
+[2026-04-08T20:24:37.377Z] file: f:\TaxHacker\components\settings\llm-settings-form.tsx
+
+[2026-04-08T20:24:42.167Z] file: f:\TaxHacker\components\settings\llm-settings-form.tsx
+
+[2026-04-08T20:24:48.748Z] file: f:\TaxHacker\components\settings\llm-settings-form.tsx
+
+[2026-04-08T20:24:57.663Z] file: f:\TaxHacker\app\(app)\settings\llm\page.tsx
+
+[2026-04-08T20:25:02.967Z] file: f:\TaxHacker\components\settings\llm-settings-form.tsx
+
+[2026-04-08T20:25:10.011Z] file: f:\TaxHacker\components\settings\llm-settings-form.tsx
+
+[2026-04-08T20:25:23.386Z] file: f:\TaxHacker\components\transactions\tax-year-selector.tsx
+
+[2026-04-08T20:25:38.041Z] file: f:\TaxHacker\components\transactions\filters.tsx
+
+[2026-04-08T20:25:42.891Z] file: f:\TaxHacker\components\transactions\filters.tsx
+
+[2026-04-08T20:26:00.533Z] file: f:\TaxHacker\components\settings\global-settings-form.tsx
+
+[2026-04-08T20:26:06.543Z] file: f:\TaxHacker\components\settings\global-settings-form.tsx
+
+[2026-04-08T20:26:18.091Z] file: f:\TaxHacker\app\(app)\transactions\page.tsx
+
+[2026-04-08T20:26:22.388Z] file: f:\TaxHacker\app\(app)\transactions\page.tsx
+
+[2026-04-08T20:26:26.829Z] file: f:\TaxHacker\app\(app)\transactions\page.tsx
+
+[2026-04-08T20:26:32.670Z] file: f:\TaxHacker\forms\settings.ts

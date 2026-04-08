@@ -2,6 +2,7 @@
 
 import { saveSettingsAction } from "@/app/(app)/settings/actions"
 import { FormError } from "@/components/forms/error"
+import { FormInput } from "@/components/forms/simple"
 import { FormSelectCategory } from "@/components/forms/select-category"
 import { FormSelectCurrency } from "@/components/forms/select-currency"
 import { FormSelectType } from "@/components/forms/select-type"
@@ -38,6 +39,18 @@ export default function GlobalSettingsForm({
         defaultValue={settings.default_category}
         categories={categories}
       />
+
+      <FormInput
+        title="Tax Year Start Date (MM-DD)"
+        name="tax_year_start"
+        defaultValue={settings.tax_year_start || "04-01"}
+        placeholder="04-01"
+        pattern="[0-1][0-9]-[0-3][0-9]"
+        maxLength={5}
+      />
+      <p className="text-xs text-muted-foreground -mt-3">
+        Set when your tax year begins. India: 04-01 (April 1), UK: 04-06 (April 6), Calendar year: 01-01
+      </p>
 
       <div className="flex flex-row items-center gap-4">
         <Button type="submit" disabled={pending}>

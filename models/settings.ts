@@ -9,7 +9,7 @@ import { LLMProvider } from "@/ai/providers/llmProvider"
 // Settings codes that contain sensitive values — encrypted at rest
 const SENSITIVE_SETTINGS = new Set([
   "openai_api_key", "google_api_key", "mistral_api_key", "openrouter_api_key",
-  "agent_api_key", "business_bank_details",
+  "openai_compatible_api_key", "agent_api_key", "business_bank_details",
 ])
 
 export type SettingsMap = Record<string, string>
@@ -19,9 +19,10 @@ export type SettingsMap = Record<string, string>
  * Falls back to environment variables (config.ai.*) when DB settings are empty.
  */
 export function getLLMSettings(settings: SettingsMap) {
-  const priorities = (settings.llm_providers || "openai,google,mistral,openrouter").split(",").map(p => p.trim()).filter(Boolean)
+  const priorities = (settings.llm_providers || "openai,google,mistral,openrouter,openai_compatible").split(",").map(p => p.trim()).filter(Boolean)
 
-  const providerLookup: Record<string, () => { provider: LLMProvider; apiKey: string; model: string }> = {
+  const openaiCompatibleMeta = PROVIDERS.find(p => p.key === "openai_compatible")
+  const providerLookup: Record<string, () => { provider: LLMProvider; apiKey: string; model: string; baseUrl?: string }> = {
     openai: () => ({
       provider: "openai" as LLMProvider,
       apiKey: settings.openai_api_key || config.ai.openaiApiKey || "",
@@ -41,6 +42,12 @@ export function getLLMSettings(settings: SettingsMap) {
       provider: "openrouter" as LLMProvider,
       apiKey: settings.openrouter_api_key || config.ai.openrouterApiKey || "",
       model: settings.openrouter_model_name || config.ai.openrouterModelName || PROVIDERS.find(p => p.key === "openrouter")?.defaultModelName || "google/gemini-2.5-flash",
+    }),
+    openai_compatible: () => ({
+      provider: "openai_compatible" as LLMProvider,
+      apiKey: settings.openai_compatible_api_key || "",
+      model: settings.openai_compatible_model_name || "",
+      baseUrl: settings.openai_compatible_base_url || openaiCompatibleMeta?.defaultBaseUrl || "",
     }),
   }
 

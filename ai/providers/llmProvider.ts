@@ -3,12 +3,13 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
 import { ChatMistralAI } from "@langchain/mistralai"
 import { BaseMessage, HumanMessage } from "@langchain/core/messages"
 
-export type LLMProvider = "openai" | "google" | "mistral" | "openrouter"
+export type LLMProvider = "openai" | "google" | "mistral" | "openrouter" | "openai_compatible"
 
 export interface LLMConfig {
   provider: LLMProvider
   apiKey: string
   model: string
+  baseUrl?: string
 }
 
 export interface LLMSettings {
@@ -58,6 +59,15 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
         temperature: temperature,
         configuration: {
           baseURL: "https://openrouter.ai/api/v1",
+        },
+      })
+    } else if (config.provider === "openai_compatible") {
+      model = new ChatOpenAI({
+        apiKey: config.apiKey || "not-needed",
+        model: config.model,
+        temperature: temperature,
+        configuration: {
+          baseURL: config.baseUrl?.trim(),
         },
       })
     } else {
@@ -114,7 +124,12 @@ async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LL
 
 export async function requestLLM(settings: LLMSettings, req: LLMRequest): Promise<LLMResponse> {
   for (const config of settings.providers) {
-    if (!config.apiKey || !config.model) {
+    if (!config.model) {
+      console.info("Skipping provider:", config.provider, "(no model)")
+      continue
+    }
+    if (config.provider === "openai_compatible" ? !config.baseUrl : !config.apiKey) {
+      console.info("Skipping provider:", config.provider, "(not configured)")
       continue
     }
 

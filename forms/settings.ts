@@ -16,7 +16,10 @@ export const settingsFormSchema = z.object({
   mistral_model_name: z.string().default("mistral-medium-latest"),
   openrouter_api_key: z.string().optional(),
   openrouter_model_name: z.string().default("google/gemini-2.5-flash"),
-  llm_providers: z.string().default('openai,google,mistral,openrouter'),
+  openai_compatible_api_key: z.string().optional(),
+  openai_compatible_model_name: z.string().optional(),
+  openai_compatible_base_url: z.string().optional(),
+  llm_providers: z.string().default('openai,google,mistral,openrouter,openai_compatible'),
   prompt_analyse_new_file: z.string().optional(),
   prompt_analyse_bank_statement: z.string().optional(),
   is_welcome_message_hidden: z.string().optional(),
@@ -30,6 +33,7 @@ export const settingsFormSchema = z.object({
     return INDIAN_STATES[val] !== undefined
   }, { message: "Invalid state code" }),
   business_bank_details: z.string().max(1024).optional(),
+  tax_year_start: z.string().regex(/^[0-1][0-9]-[0-3][0-9]$/).optional(),
 })
 
 export const currencyFormSchema = z.object({

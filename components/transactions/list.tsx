@@ -113,7 +113,8 @@ export const standardFieldRenderers: Record<string, FieldRenderer> = {
     ),
     footerValue: (transactions: Transaction[]) => {
       const netTotalPerCurrency = calcNetTotalPerCurrency(transactions)
-      const turnoverPerCurrency = calcTotalPerCurrency(transactions)
+      // Isolate only the income to calculate accurate turnover
+      const turnoverPerCurrency = calcTotalPerCurrency(transactions.filter((transaction) => transaction.type === 'income'))
 
       return (
         <div className="flex flex-col gap-3 text-right">
@@ -222,6 +223,7 @@ const getFieldRenderer = (field: Field): FieldRenderer => {
 
 export function TransactionList({ transactions, fields = [] }: { transactions: Transaction[]; fields?: Field[] }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -249,17 +251,30 @@ export function TransactionList({ transactions, fields = [] }: { transactions: T
   const toggleAllRows = () => {
     if (selectedIds.length === transactions.length) {
       setSelectedIds([])
+      setLastSelectedIndex(null)
     } else {
       setSelectedIds(transactions.map((transaction) => transaction.id))
+      setLastSelectedIndex(null)
     }
   }
 
-  const toggleOneRow = (e: React.MouseEvent, id: string) => {
+  const toggleOneRow = (e: React.MouseEvent, id: string, index: number) => {
     e.stopPropagation()
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter((item) => item !== id))
+
+    // SHIFT+click for range selection
+    if (e.shiftKey && lastSelectedIndex !== null) {
+      const start = Math.min(lastSelectedIndex, index)
+      const end = Math.max(lastSelectedIndex, index)
+      const rangeIds = transactions.slice(start, end + 1).map((t) => t.id)
+      const newSelection = [...new Set([...selectedIds, ...rangeIds])]
+      setSelectedIds(newSelection)
     } else {
-      setSelectedIds([...selectedIds, id])
+      if (selectedIds.includes(id)) {
+        setSelectedIds(selectedIds.filter((item) => item !== id))
+      } else {
+        setSelectedIds([...selectedIds, id])
+      }
+      setLastSelectedIndex(index)
     }
   }
 
@@ -283,7 +298,10 @@ export function TransactionList({ transactions, fields = [] }: { transactions: T
 
   const renderFieldInTable = (transaction: Transaction, field: FieldWithRenderer): string | React.ReactNode => {
     if (field.isExtra) {
-      return transaction.extra?.[field.code as keyof typeof transaction.extra] ?? ""
+      const extra = typeof transaction.extra === "string"
+        ? JSON.parse(transaction.extra || "{}")
+        : (transaction.extra || {})
+      return extra[field.code] ?? ""
     } else if (field.renderer.formatValue) {
       return field.renderer.formatValue(transaction)
     } else {
@@ -335,7 +353,7 @@ export function TransactionList({ transactions, fields = [] }: { transactions: T
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((transaction) => (
+          {transactions.map((transaction, index) => (
             <TableRow
               key={transaction.id}
               className={cn(
@@ -345,14 +363,10 @@ export function TransactionList({ transactions, fields = [] }: { transactions: T
               )}
               onClick={() => handleRowClick(transaction.id)}
             >
-              <TableCell onClick={(e) => e.stopPropagation()}>
+              <TableCell onClick={(e) => toggleOneRow(e, transaction.id, index)}>
                 <Checkbox
                   checked={selectedIds.includes(transaction.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked !== "indeterminate") {
-                      toggleOneRow({ stopPropagation: () => {} } as React.MouseEvent, transaction.id)
-                    }
-                  }}
+                  onCheckedChange={() => {}}
                 />
               </TableCell>
               {visibleFields.map((field) => (
