@@ -202,65 +202,87 @@ export const getTimeSeriesStats = cache(
       where.type = filters.type
     }
 
-    // Only pull the columns actually used by the aggregation below —
-    // avoids loading large JSON columns (items, extra, files, text).
-    const transactions = await prisma.transaction.findMany({
-      where,
-      select: {
-        type: true,
-        total: true,
-        convertedTotal: true,
-        currencyCode: true,
-        convertedCurrencyCode: true,
-        issuedAt: true,
-      },
-      orderBy: { issuedAt: "asc" },
-    })
+    // Determine date range for day-vs-month grouping decision.
+    // Use filter bounds when provided; otherwise query the actual min/max
+    // from the DB so we don't load all rows just to read two dates.
+    let dateFrom: Date
+    let dateTo: Date
 
-    if (transactions.length === 0) {
-      return []
+    if (filters.dateFrom && filters.dateTo) {
+      dateFrom = new Date(filters.dateFrom)
+      dateTo = new Date(filters.dateTo)
+    } else {
+      type MinMaxRow = { min_date: Date | null; max_date: Date | null }
+      const [bounds] = await prisma.$queryRaw<MinMaxRow[]>`
+        SELECT MIN(issued_at) AS min_date, MAX(issued_at) AS max_date
+        FROM transactions
+        WHERE user_id = ${userId}::uuid
+          AND status = 'active'
+          ${filters.dateFrom ? Prisma.sql`AND issued_at >= ${new Date(filters.dateFrom)}` : Prisma.empty}
+          ${filters.dateTo ? Prisma.sql`AND issued_at <= ${new Date(filters.dateTo)}` : Prisma.empty}
+          ${filters.categoryCode ? Prisma.sql`AND category_code = ${filters.categoryCode}` : Prisma.empty}
+          ${filters.projectCode ? Prisma.sql`AND project_code = ${filters.projectCode}` : Prisma.empty}
+          ${filters.type ? Prisma.sql`AND type = ${filters.type}` : Prisma.empty}
+      `
+      if (!bounds.min_date || !bounds.max_date) return []
+      dateFrom = bounds.min_date
+      dateTo = bounds.max_date
     }
 
-    // Determine if we should group by day or month
-    const dateFrom = filters.dateFrom ? new Date(filters.dateFrom) : new Date(transactions[0].issuedAt!)
-    const dateTo = filters.dateTo ? new Date(filters.dateTo) : new Date(transactions[transactions.length - 1].issuedAt!)
     const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24))
     const groupByDay = daysDiff <= 50
+    const truncUnit = groupByDay ? Prisma.sql`'day'` : Prisma.sql`'month'`
+    const currency = defaultCurrency.toUpperCase()
 
-    // Group transactions by time period
-    const grouped = transactions.reduce(
-      (acc, transaction) => {
-        if (!transaction.issuedAt) return acc
+    type RawTimeSeriesRow = {
+      period: Date
+      income: bigint
+      expenses: bigint
+    }
 
-        const date = new Date(transaction.issuedAt)
-        const period = groupByDay
-          ? date.toISOString().split("T")[0] // YYYY-MM-DD
-          : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` // YYYY-MM
+    const rows = await prisma.$queryRaw<RawTimeSeriesRow[]>`
+      SELECT
+        DATE_TRUNC(${truncUnit}, issued_at) AS period,
+        SUM(CASE WHEN type = 'income' THEN
+          CASE
+            WHEN UPPER(converted_currency_code) = ${currency} THEN COALESCE(converted_total, 0)
+            WHEN UPPER(currency_code) = ${currency} THEN COALESCE(total, 0)
+            ELSE 0
+          END
+        ELSE 0 END) AS income,
+        SUM(CASE WHEN type = 'expense' THEN
+          CASE
+            WHEN UPPER(converted_currency_code) = ${currency} THEN COALESCE(converted_total, 0)
+            WHEN UPPER(currency_code) = ${currency} THEN COALESCE(total, 0)
+            ELSE 0
+          END
+        ELSE 0 END) AS expenses
+      FROM transactions
+      WHERE user_id = ${userId}::uuid
+        AND status = 'active'
+        ${filters.dateFrom ? Prisma.sql`AND issued_at >= ${new Date(filters.dateFrom)}` : Prisma.empty}
+        ${filters.dateTo ? Prisma.sql`AND issued_at <= ${new Date(filters.dateTo)}` : Prisma.empty}
+        ${filters.categoryCode ? Prisma.sql`AND category_code = ${filters.categoryCode}` : Prisma.empty}
+        ${filters.projectCode ? Prisma.sql`AND project_code = ${filters.projectCode}` : Prisma.empty}
+        ${filters.type ? Prisma.sql`AND type = ${filters.type}` : Prisma.empty}
+      GROUP BY period
+      ORDER BY period
+    `
 
-        if (!acc[period]) {
-          acc[period] = { period, income: 0, expenses: 0, date }
-        }
+    if (rows.length === 0) return []
 
-        // Get amount in default currency
-        const amount =
-          transaction.convertedCurrencyCode?.toUpperCase() === defaultCurrency.toUpperCase()
-            ? transaction.convertedTotal || 0
-            : transaction.currencyCode?.toUpperCase() === defaultCurrency.toUpperCase()
-              ? transaction.total || 0
-              : 0 // Skip transactions not in default currency for simplicity
-
-        if (transaction.type === "income") {
-          acc[period].income += amount
-        } else if (transaction.type === "expense") {
-          acc[period].expenses += amount
-        }
-
-        return acc
-      },
-      {} as Record<string, TimeSeriesData>
-    )
-
-    return Object.values(grouped).sort((a, b) => a.date.getTime() - b.date.getTime())
+    return rows.map((row) => {
+      const date = new Date(row.period)
+      const period = groupByDay
+        ? date.toISOString().split("T")[0]
+        : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      return {
+        period,
+        income: Number(row.income),
+        expenses: Number(row.expenses),
+        date,
+      }
+    })
   }
 )
 
@@ -291,117 +313,146 @@ export const getDetailedTimeSeriesStats = cache(
       where.type = filters.type
     }
 
-    // Pull only the columns needed for the aggregation. Categories are
-    // fetched separately (small table) and joined in-memory via lookup.
-    const [transactions, categories] = await Promise.all([
-      prisma.transaction.findMany({
-        where,
-        select: {
-          type: true,
-          total: true,
-          convertedTotal: true,
-          currencyCode: true,
-          convertedCurrencyCode: true,
-          categoryCode: true,
-          issuedAt: true,
-        },
-        orderBy: { issuedAt: "asc" },
-      }),
-      prisma.category.findMany({
-        where: { userId },
-        orderBy: { name: "asc" },
-      }),
-    ])
+    // Fetch categories separately (small table) for name/color lookup.
+    const categories = await prisma.category.findMany({
+      where: { userId },
+      orderBy: { name: "asc" },
+    })
 
-    if (transactions.length === 0) {
-      return []
+    // Determine date range for day-vs-month grouping decision.
+    let dateFrom: Date
+    let dateTo: Date
+
+    if (filters.dateFrom && filters.dateTo) {
+      dateFrom = new Date(filters.dateFrom)
+      dateTo = new Date(filters.dateTo)
+    } else {
+      type MinMaxRow = { min_date: Date | null; max_date: Date | null }
+      const [bounds] = await prisma.$queryRaw<MinMaxRow[]>`
+        SELECT MIN(issued_at) AS min_date, MAX(issued_at) AS max_date
+        FROM transactions
+        WHERE user_id = ${userId}::uuid
+          AND status = 'active'
+          ${filters.dateFrom ? Prisma.sql`AND issued_at >= ${new Date(filters.dateFrom)}` : Prisma.empty}
+          ${filters.dateTo ? Prisma.sql`AND issued_at <= ${new Date(filters.dateTo)}` : Prisma.empty}
+          ${filters.categoryCode ? Prisma.sql`AND category_code = ${filters.categoryCode}` : Prisma.empty}
+          ${filters.projectCode ? Prisma.sql`AND project_code = ${filters.projectCode}` : Prisma.empty}
+          ${filters.type ? Prisma.sql`AND type = ${filters.type}` : Prisma.empty}
+      `
+      if (!bounds.min_date || !bounds.max_date) return []
+      dateFrom = bounds.min_date
+      dateTo = bounds.max_date
     }
 
-    // Determine if we should group by day or month
-    const dateFrom = filters.dateFrom ? new Date(filters.dateFrom) : new Date(transactions[0].issuedAt!)
-    const dateTo = filters.dateTo ? new Date(filters.dateTo) : new Date(transactions[transactions.length - 1].issuedAt!)
     const daysDiff = Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24))
     const groupByDay = daysDiff <= 50
-
-    // Create category lookup
+    const truncUnit = groupByDay ? Prisma.sql`'day'` : Prisma.sql`'month'`
+    const currency = defaultCurrency.toUpperCase()
     const categoryLookup = new Map(categories.map((cat) => [cat.code, cat]))
 
-    // Group transactions by time period
-    const grouped = transactions.reduce(
-      (acc, transaction) => {
-        if (!transaction.issuedAt) return acc
+    type RawDetailedRow = {
+      period: Date
+      category_code: string | null
+      income: bigint
+      expenses: bigint
+      transaction_count: bigint
+    }
 
-        const date = new Date(transaction.issuedAt)
-        const period = groupByDay
-          ? date.toISOString().split("T")[0] // YYYY-MM-DD
-          : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` // YYYY-MM
+    const rows = await prisma.$queryRaw<RawDetailedRow[]>`
+      SELECT
+        DATE_TRUNC(${truncUnit}, issued_at) AS period,
+        COALESCE(category_code, 'other') AS category_code,
+        SUM(CASE WHEN type = 'income' THEN
+          CASE
+            WHEN UPPER(converted_currency_code) = ${currency} THEN COALESCE(converted_total, 0)
+            WHEN UPPER(currency_code) = ${currency} THEN COALESCE(total, 0)
+            ELSE 0
+          END
+        ELSE 0 END) AS income,
+        SUM(CASE WHEN type = 'expense' THEN
+          CASE
+            WHEN UPPER(converted_currency_code) = ${currency} THEN COALESCE(converted_total, 0)
+            WHEN UPPER(currency_code) = ${currency} THEN COALESCE(total, 0)
+            ELSE 0
+          END
+        ELSE 0 END) AS expenses,
+        COUNT(*) AS transaction_count
+      FROM transactions
+      WHERE user_id = ${userId}::uuid
+        AND status = 'active'
+        ${filters.dateFrom ? Prisma.sql`AND issued_at >= ${new Date(filters.dateFrom)}` : Prisma.empty}
+        ${filters.dateTo ? Prisma.sql`AND issued_at <= ${new Date(filters.dateTo)}` : Prisma.empty}
+        ${filters.categoryCode ? Prisma.sql`AND category_code = ${filters.categoryCode}` : Prisma.empty}
+        ${filters.projectCode ? Prisma.sql`AND project_code = ${filters.projectCode}` : Prisma.empty}
+        ${filters.type ? Prisma.sql`AND type = ${filters.type}` : Prisma.empty}
+      GROUP BY period, category_code
+      ORDER BY period, category_code
+    `
 
-        if (!acc[period]) {
-          acc[period] = {
-            period,
-            income: 0,
-            expenses: 0,
-            date,
-            categories: new Map<string, CategoryBreakdown>(),
-            totalTransactions: 0,
-          }
-        }
+    if (rows.length === 0) return []
 
-        // Get amount in default currency
-        const amount =
-          transaction.convertedCurrencyCode?.toUpperCase() === defaultCurrency.toUpperCase()
-            ? transaction.convertedTotal || 0
-            : transaction.currencyCode?.toUpperCase() === defaultCurrency.toUpperCase()
-              ? transaction.total || 0
-              : 0 // Skip transactions not in default currency for simplicity
+    // Aggregate rows into per-period buckets in memory.
+    // The heavy work (summing, counting) is already done by the DB —
+    // this is just a lightweight pivot across a small result set.
+    const periodMap = new Map<
+      string,
+      {
+        period: string
+        income: number
+        expenses: number
+        date: Date
+        categories: Map<string, CategoryBreakdown>
+        totalTransactions: number
+      }
+    >()
 
-        const categoryCode = transaction.categoryCode || "other"
-        const category = categoryLookup.get(categoryCode) || {
-          code: "other",
-          name: "Other",
-          color: "#6b7280",
-        }
+    for (const row of rows) {
+      const date = new Date(row.period)
+      const periodKey = groupByDay
+        ? date.toISOString().split("T")[0]
+        : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
 
-        // Initialize category if not exists
-        if (!acc[period].categories.has(categoryCode)) {
-          acc[period].categories.set(categoryCode, {
-            code: category.code,
-            name: category.name,
-            color: category.color || "#6b7280",
-            income: 0,
-            expenses: 0,
-            transactionCount: 0,
-          })
-        }
+      if (!periodMap.has(periodKey)) {
+        periodMap.set(periodKey, {
+          period: periodKey,
+          income: 0,
+          expenses: 0,
+          date,
+          categories: new Map<string, CategoryBreakdown>(),
+          totalTransactions: 0,
+        })
+      }
 
-        const categoryData = acc[period].categories.get(categoryCode)!
-        categoryData.transactionCount++
-        acc[period].totalTransactions++
+      const bucket = periodMap.get(periodKey)!
+      const rowIncome = Number(row.income)
+      const rowExpenses = Number(row.expenses)
+      const rowCount = Number(row.transaction_count)
 
-        if (transaction.type === "income") {
-          acc[period].income += amount
-          categoryData.income += amount
-        } else if (transaction.type === "expense") {
-          acc[period].expenses += amount
-          categoryData.expenses += amount
-        }
+      bucket.income += rowIncome
+      bucket.expenses += rowExpenses
+      bucket.totalTransactions += rowCount
 
-        return acc
-      },
-      {} as Record<
-        string,
-        {
-          period: string
-          income: number
-          expenses: number
-          date: Date
-          categories: Map<string, CategoryBreakdown>
-          totalTransactions: number
-        }
-      >
-    )
+      const catCode = row.category_code ?? "other"
+      const catMeta = categoryLookup.get(catCode) || { code: "other", name: "Other", color: "#6b7280" }
 
-    return Object.values(grouped)
+      if (!bucket.categories.has(catCode)) {
+        bucket.categories.set(catCode, {
+          code: catMeta.code,
+          name: catMeta.name,
+          color: catMeta.color || "#6b7280",
+          income: 0,
+          expenses: 0,
+          transactionCount: 0,
+        })
+      }
+
+      const catBreakdown = bucket.categories.get(catCode)!
+      catBreakdown.income += rowIncome
+      catBreakdown.expenses += rowExpenses
+      catBreakdown.transactionCount += rowCount
+    }
+
+    return Array.from(periodMap.values())
       .map((item) => ({
         ...item,
         categories: Array.from(item.categories.values()).filter((cat) => cat.income > 0 || cat.expenses > 0),

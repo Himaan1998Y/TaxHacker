@@ -33,7 +33,6 @@ model User {
   aiBalance           Int               @default(0) @map("ai_balance")
   businessName        String?           @map("business_name")
   businessAddress     String?           @map("business_address")
-  businessBankDetails String?           @map("business_bank_details")
   businessLogo        String?           @map("business_logo")
   accounts            Account[]
   sessions            Session[]

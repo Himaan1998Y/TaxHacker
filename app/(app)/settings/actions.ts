@@ -104,12 +104,6 @@ export async function saveProfileAction(
 
   if (validatedForm.data.businessBankDetails !== undefined) {
     await updateSettings(user.id, "business_bank_details", validatedForm.data.businessBankDetails)
-    // Clear the legacy plaintext column so it no longer holds the value.
-    // This is a safe "lazy migration" — users who edit their details will
-    // have their plaintext wiped automatically.
-    if (user.businessBankDetails) {
-      await updateUser(user.id, { businessBankDetails: null })
-    }
   }
 
   revalidatePath("/settings/profile")

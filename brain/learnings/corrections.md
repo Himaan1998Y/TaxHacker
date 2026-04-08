@@ -86,3 +86,25 @@
 [2026-04-07T11:52:30.250Z] file: f:\TaxHacker\models\transactions.ts
 
 [2026-04-07T11:53:46.800Z] file: f:\TaxHacker\app\(app)\dashboard\page.tsx
+
+[2026-04-08T06:46:49.710Z] file: f:\Antigravity\.claude\scripts\pre-deploy-audit.js
+
+[2026-04-08T06:50:05.205Z] file: f:\TaxHacker\package.json
+
+[2026-04-08T06:50:12.763Z] file: f:\TaxHacker\package.json
+
+[2026-04-08T06:57:15.862Z] file: f:\TaxHacker\package.json
+
+[2026-04-08T09:29:22.429Z] file: f:\TaxHacker\app\(app)\settings\actions.ts
+
+[2026-04-08T09:29:29.840Z] file: f:\TaxHacker\app\api\stripe\webhook\route.ts
+
+[2026-04-08T09:29:34.419Z] file: f:\TaxHacker\app\api\stripe\webhook\route.ts
+
+[2026-04-08T09:29:38.314Z] file: f:\TaxHacker\app\api\stripe\webhook\route.ts
+
+[2026-04-08T09:29:56.044Z] file: f:\TaxHacker\prisma\migrations\20260408_drop_business_bank_details\migration.sql
+
+[2026-04-08T09:30:01.264Z] file: f:\TaxHacker\models\stats.ts
+
+[2026-04-08T09:30:29.666Z] file: f:\TaxHacker\models\stats.ts
