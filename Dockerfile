@@ -91,6 +91,13 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Next.js standalone output traces dependencies and creates partial node_modules
+# entries (sometimes as files, not dirs) for prisma/sharp/@img/@prisma. Those
+# stubs would block the full COPYs below with "cannot copy to non-directory".
+# Remove the traced stubs first so the full materialised packages can be copied in.
+RUN rm -rf node_modules/.prisma node_modules/@prisma node_modules/prisma \
+           node_modules/sharp node_modules/@img
+
 # Copy prisma CLI + engine (needed for migrate deploy in entrypoint)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
