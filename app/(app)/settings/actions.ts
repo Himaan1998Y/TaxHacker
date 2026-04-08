@@ -88,11 +88,6 @@ export async function saveProfileAction(
     }
   }
 
-  // SECURITY/DPDP: Bank details now live ONLY in the encrypted Settings
-  // table (key `business_bank_details`). The plaintext column on User is
-  // preserved read-only as a fallback for unmigrated rows but is never
-  // written to anymore. A future migration will drop the column after
-  // the backfill is verified across all tenants.
   await updateUser(user.id, {
     name: validatedForm.data.name !== undefined ? validatedForm.data.name : user.name,
     avatar: avatarUrl,
