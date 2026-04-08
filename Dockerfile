@@ -61,6 +61,23 @@ RUN mkdir -p node_modules/@img && \
     done; \
     true
 
+# @prisma – client engines; entries are pnpm symlinks → dereference them.
+RUN mkdir -p node_modules/@prisma && \
+    for link in node_modules/@prisma/*; do \
+      [ -L "$link" ] || continue; \
+      real=$(readlink -f "$link") || continue; \
+      tmp="/tmp/_prisma_$(basename "$link")"; \
+      cp -rL "$real" "$tmp" 2>/dev/null && rm -f "$link" && mv "$tmp" "$link" || true; \
+    done; \
+    true
+
+# prisma CLI – the bare prisma package may itself be a symlink.
+RUN if [ -L node_modules/prisma ]; then \
+      real=$(readlink -f node_modules/prisma); \
+      cp -rL "$real" /tmp/_prisma_cli 2>/dev/null && rm -f node_modules/prisma && mv /tmp/_prisma_cli node_modules/prisma; \
+    fi; \
+    true
+
 # Production stage
 FROM base
 
