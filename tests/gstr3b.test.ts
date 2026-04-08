@@ -471,3 +471,141 @@ describe('GSTR-3B summary generation', () => {
     expect(report.table6[1].sgst).toBeGreaterThan(0)
   })
 })
+
+describe('Table 5: Exempt/Nil/Non-GST inward supplies', () => {
+  const baseExpense = {
+    id: 'e1',
+    name: 'Expense',
+    merchant: 'Vendor',
+    invoiceNumber: null,
+    gstin: null,
+    total: 50000,
+    taxableAmount: 50000,
+    gstRate: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0,
+    hsnCode: null,
+    placeOfSupply: 'Delhi',
+    supplyType: null,
+    reverseCharge: false,
+    issuedAt: new Date().toISOString(),
+    type: 'expense',
+  }
+
+  it('classifies exempt inter-state expenses correctly', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, categoryCode: 'exempt_services', placeOfSupply: 'Karnataka' }],
+      '27', validGSTIN, '042026', []
+    )
+    const exemptRow = report.table5.find(r => r.description.includes('Exempt'))!
+    expect(exemptRow.interState).toBeGreaterThan(0)
+    expect(exemptRow.intraState).toBe(0)
+  })
+
+  it('classifies exempt intra-state expenses correctly', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, categoryCode: 'exempt_services', placeOfSupply: 'Maharashtra' }],
+      '27', validGSTIN, '042026', []
+    )
+    const exemptRow = report.table5.find(r => r.description.includes('Exempt'))!
+    expect(exemptRow.intraState).toBeGreaterThan(0)
+    expect(exemptRow.interState).toBe(0)
+  })
+
+  it('classifies non-gst (hyphen) inter-state expenses correctly', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, categoryCode: 'non-gst_supplies', placeOfSupply: 'Karnataka' }],
+      '27', validGSTIN, '042026', []
+    )
+    const nonGSTRow = report.table5.find(r => r.description.includes('Non-GST'))!
+    expect(nonGSTRow.interState).toBeGreaterThan(0)
+  })
+
+  it('classifies non_gst (underscore) intra-state expenses correctly', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, categoryCode: 'non_gst_supplies', placeOfSupply: 'Maharashtra' }],
+      '27', validGSTIN, '042026', []
+    )
+    const nonGSTRow = report.table5.find(r => r.description.includes('Non-GST'))!
+    expect(nonGSTRow.intraState).toBeGreaterThan(0)
+  })
+
+  it('defaults to nil when category is neither exempt nor non-gst', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, categoryCode: 'other_zero', placeOfSupply: 'Maharashtra' }],
+      '27', validGSTIN, '042026', []
+    )
+    const nilRow = report.table5.find(r => r.description.includes('Nil'))!
+    expect(nilRow.intraState).toBeGreaterThan(0)
+  })
+
+  it('skips gst-rated expenses from Table 5', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, categoryCode: 'exempt', gstRate: 18, cgst: 4500, sgst: 4500 }],
+      '27', validGSTIN, '042026', []
+    )
+    const exemptRow = report.table5.find(r => r.description.includes('Exempt'))!
+    expect(exemptRow.intraState).toBe(0)
+    expect(exemptRow.interState).toBe(0)
+  })
+})
+
+describe('isInterStateSupply edge cases', () => {
+  const baseExpense = {
+    id: 'e1', name: 'E', merchant: 'V', invoiceNumber: null, gstin: null,
+    total: 50000, taxableAmount: 50000, gstRate: 0, cgst: 0, sgst: 0, igst: 0, cess: 0,
+    hsnCode: null, reverseCharge: false, issuedAt: new Date().toISOString(),
+    type: 'expense', categoryCode: 'nil_rated',
+  }
+
+  it('treats unknown place-of-supply as intra-state (safe default)', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, placeOfSupply: 'UnknownState' }],
+      '27', validGSTIN, '042026', []
+    )
+    const nilRow = report.table5.find(r => r.description.includes('Nil'))!
+    // posCode not found → returns false → intra-state
+    expect(nilRow.intraState).toBeGreaterThan(0)
+    expect(nilRow.interState).toBe(0)
+  })
+
+  it('treats null businessStateCode as intra-state', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, placeOfSupply: 'Karnataka' }],
+      null, validGSTIN, '042026', []
+    )
+    const nilRow = report.table5.find(r => r.description.includes('Nil'))!
+    expect(nilRow.intraState).toBeGreaterThan(0)
+  })
+
+  it('treats null placeOfSupply as intra-state', () => {
+    const report = generateGSTR3B(
+      [{ ...baseExpense, placeOfSupply: null }],
+      '27', validGSTIN, '042026', []
+    )
+    const nilRow = report.table5.find(r => r.description.includes('Nil'))!
+    expect(nilRow.intraState).toBeGreaterThan(0)
+  })
+})
+
+describe('generateGSTR3BJSON portal shape', () => {
+  it('emits EXPT type for Exempt row and NONGST for Non-GST row', () => {
+    const report = generateGSTR3B([], '27', validGSTIN, '042026', [])
+    const json = generateGSTR3BJSON(report) as any
+    const types = json.inward_sup.isup_details.map((r: any) => r.ty)
+    expect(types).toContain('NILL')
+    expect(types).toContain('EXPT')
+    expect(types).toContain('NONGST')
+  })
+
+  it('uses || 0 fallback when table31 rows are missing', () => {
+    const emptyReport = generateGSTR3B([], '27', validGSTIN, '042026', [])
+    const sparseReport = { ...emptyReport, table31: [] }
+    const json = generateGSTR3BJSON(sparseReport) as any
+    expect(json.sup_details.osup_det.txval).toBe(0)
+    expect(json.sup_details.rcm_sup.txval).toBe(0)
+    expect(json.sup_details.non_gst_sup.txval).toBe(0)
+  })
+})

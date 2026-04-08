@@ -65,4 +65,36 @@ describe('CSV export helpers', () => {
   it('preserves rupee symbol values', () => {
     expect(sanitizeCSVValue('₹12,500.00')).toBe('₹12,500.00')
   })
+
+  it('returns null for null input', () => {
+    expect(sanitizeCSVValue(null)).toBeNull()
+  })
+
+  it('returns null for undefined input', () => {
+    expect(sanitizeCSVValue(undefined)).toBeNull()
+  })
+
+  it('returns empty string for empty string input', () => {
+    expect(sanitizeCSVValue('')).toBe('')
+  })
+
+  it('returns empty string for empty CSV when no rows', () => {
+    expect(generateTransactionCSV([])).toBe('')
+  })
+
+  it('uses object keys as headers when columns not provided', () => {
+    const rows = [{ name: 'Test', amount: '100' }]
+    const csv = generateTransactionCSV(rows)
+    expect(csv).toContain('"name"')
+    expect(csv).toContain('"amount"')
+    expect(csv).toContain('"Test"')
+    expect(csv).toContain('"100"')
+  })
+
+  it('handles null cell values as empty strings in CSV', () => {
+    const rows = [{ name: null, amount: '100' }]
+    const csv = generateTransactionCSV(rows as any, ['name', 'amount'])
+    expect(csv).toContain('""')
+    expect(csv).toContain('"100"')
+  })
 })
