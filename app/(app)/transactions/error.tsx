@@ -10,7 +10,7 @@ export default function TransactionsError({ error, reset }: { error: Error; rese
       <AlertTriangle className="w-16 h-16 text-orange-500" />
       <h2 className="text-2xl font-bold">Failed to load transactions</h2>
       <p className="text-muted-foreground text-center max-w-md">
-        {error.message || "Could not load your transactions. Your data is safe — try refreshing."}
+        {"Could not load your transactions. Your data is safe — try refreshing."}
       </p>
       <div className="flex gap-3">
         <Button onClick={reset}>Retry</Button>

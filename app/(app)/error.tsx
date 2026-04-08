@@ -9,7 +9,7 @@ export default function AppError({ error, reset }: { error: Error; reset: () => 
       <AlertTriangle className="w-16 h-16 text-destructive" />
       <h2 className="text-2xl font-bold">Something went wrong</h2>
       <p className="text-muted-foreground text-center max-w-md">
-        {error.message || "An unexpected error occurred. Your data is safe."}
+        {"An unexpected error occurred. Your data is safe."}
       </p>
       <div className="flex gap-3">
         <Button onClick={reset}>Try again</Button>

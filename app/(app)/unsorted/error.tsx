@@ -10,7 +10,7 @@ export default function UnsortedError({ error, reset }: { error: Error; reset: (
       <Brain className="w-16 h-16 text-orange-500" />
       <h2 className="text-2xl font-bold">Analysis failed</h2>
       <p className="text-muted-foreground text-center max-w-md">
-        {error.message || "Failed to load the analysis page. Your uploaded files are safe."}
+        {"Failed to load the analysis page. Your uploaded files are safe."}
       </p>
       <div className="flex gap-3">
         <Button onClick={reset}>Retry</Button>

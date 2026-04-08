@@ -25,7 +25,7 @@ export function NewsletterForm() {
       setEmail("")
     } catch (error) {
       setStatus("error")
-      setMessage(error instanceof Error ? error.message : "Failed to subscribe. Please try again.")
+      setMessage("Failed to subscribe. Please try again.")
     }
   }
 
