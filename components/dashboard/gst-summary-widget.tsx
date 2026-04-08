@@ -1,14 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatNumber } from "@/lib/utils"
-import { getCurrentUser } from "@/lib/auth"
-import { getGSTSummary, type TransactionFilters } from "@/models/transactions"
+import { type GSTSummaryResult } from "@/models/transactions"
 import { IndianRupee } from "lucide-react"
 
-export async function GSTSummaryWidget({ filters }: { filters: TransactionFilters }) {
-  const user = await getCurrentUser()
-  // PERFORMANCE: DB-side aggregation via getGSTSummary() instead of
-  // loading every transaction with its JSON `extra` column into memory.
-  const gst = await getGSTSummary(user.id, filters)
+export function GSTSummaryWidget({ gst }: { gst: GSTSummaryResult }) {
 
   // Don't render if no GST data
   if (gst.slabs.length === 0) return null

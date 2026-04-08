@@ -10,7 +10,7 @@ import config from "@/lib/config"
 import { getOnboardingStatus } from "@/lib/onboarding"
 import { getUnsortedFiles } from "@/models/files"
 import { getSettings } from "@/models/settings"
-import { TransactionFilters } from "@/models/transactions"
+import { getGSTSummary, TransactionFilters } from "@/models/transactions"
 import { Metadata } from "next"
 import { Suspense } from "react"
 
@@ -32,10 +32,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   // PERFORMANCE: Fetch the above-the-fold widgets' data in parallel
   // instead of awaiting each call serially (the old code made three
   // sequential round-trips before rendering anything).
-  const [unsortedFiles, settings, onboardingStatus] = await Promise.all([
+  const [unsortedFiles, settings, onboardingStatus, gstSummary] = await Promise.all([
     getUnsortedFiles(user.id),
     getSettings(user.id),
     getOnboardingStatus(user.id),
+    getGSTSummary(user.id, filters),
   ])
 
   const onboardingSteps = [
@@ -82,9 +83,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <StatsWidget filters={filters} />
       </Suspense>
 
-      <Suspense fallback={<WidgetSkeleton height="h-32" />}>
-        <GSTSummaryWidget filters={filters} />
-      </Suspense>
+      <GSTSummaryWidget gst={gstSummary} />
     </div>
   )
 }
