@@ -1,5 +1,3 @@
-"use server"
-
 import { prisma } from "@/lib/db"
 import { FILE_UPLOAD_PATH, getUserUploadsDirectory, safePathJoin } from "@/lib/files"
 import { unlink } from "fs/promises"
