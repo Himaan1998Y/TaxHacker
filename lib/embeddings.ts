@@ -4,6 +4,73 @@ import { getSettings } from "@/models/settings"
 
 const EMBEDDING_DIMENSION = 768
 
+// ─── pgvector capability probe ──────────────────────────────────────
+//
+// The embedding pipeline depends on three things being present in the
+// live database:
+//   1. the `vector` extension installed
+//   2. the `embedding vector(768)` column on the transactions table
+//   3. the `hnsw` search index
+//
+// docker-entrypoint.sh tries to set all three up on every container boot
+// with `|| echo pgvector not available`. If any step fails (Coolify's
+// default postgres image doesn't ship pgvector, for example), the boot
+// continues but every call into this module would then throw at the
+// first $queryRawUnsafe — and before the fix below those throws were
+// being silently swallowed by the caller's try/catch, turning the entire
+// embeddings feature into a ghost that looked healthy in logs.
+//
+// This probe does one cheap `SELECT pg_typeof('[0]'::vector)` — if it
+// succeeds the column+extension are both present; if it throws we cache
+// the negative result for the life of the process and turn every
+// embedding operation into a no-op with a visible warning.
+let pgvectorAvailable: boolean | null = null
+let pgvectorProbePromise: Promise<boolean> | null = null
+
+async function hasPgvector(): Promise<boolean> {
+  if (pgvectorAvailable !== null) return pgvectorAvailable
+  if (pgvectorProbePromise) return pgvectorProbePromise
+
+  pgvectorProbePromise = (async () => {
+    try {
+      // The probe uses the extension's own type constructor. If the
+      // extension is missing, Postgres errors with "type vector does
+      // not exist"; if the column is missing but the extension is
+      // installed, this still succeeds — which is the right answer
+      // because storeTransactionEmbedding's writer also creates the
+      // column via docker-entrypoint.sh on boot. A separate probe for
+      // the column would double the warning noise without changing
+      // behaviour.
+      await prisma.$queryRawUnsafe(`SELECT '[0]'::vector`)
+      pgvectorAvailable = true
+    } catch {
+      pgvectorAvailable = false
+      console.warn(
+        "[embeddings] pgvector extension not available — semantic search, " +
+          "duplicate detection and embedding storage are disabled for this " +
+          "process. To enable, run the SQL in prisma/optional_pgvector_setup.sql " +
+          "against your database and restart the container."
+      )
+    } finally {
+      pgvectorProbePromise = null
+    }
+    return pgvectorAvailable!
+  })()
+
+  return pgvectorProbePromise
+}
+
+// Exported so tests can force a specific probe state without having to
+// juggle prisma mocks. Also usable from an admin/settings page later.
+export function _resetPgvectorProbe(state: boolean | null = null): void {
+  pgvectorAvailable = state
+  pgvectorProbePromise = null
+}
+
+export async function isPgvectorAvailable(): Promise<boolean> {
+  return hasPgvector()
+}
+
 /**
  * Build a text representation of a transaction for embedding.
  * Combines the most semantically meaningful fields.
@@ -112,11 +179,13 @@ function hashEmbedding(text: string): number[] {
 
 /**
  * Store embedding for a transaction using raw SQL (Prisma doesn't support vector type).
+ * No-op (with a one-time warning) when pgvector is not available.
  */
 export async function storeTransactionEmbedding(
   transactionId: string,
   embedding: number[]
 ): Promise<void> {
+  if (!(await hasPgvector())) return
   const vectorStr = `[${embedding.join(",")}]`
   await prisma.$executeRawUnsafe(
     `UPDATE "transactions" SET "embedding" = $1::vector WHERE "id" = $2::uuid`,
@@ -154,6 +223,7 @@ export async function findSimilarTransactions(
   limit: number = 5,
   excludeId?: string
 ): Promise<Array<{ id: string; name: string; merchant: string; total: number; similarity: number }>> {
+  if (!(await hasPgvector())) return []
   const vectorStr = `[${embedding.join(",")}]`
 
   let query = `
@@ -199,6 +269,7 @@ export async function semanticSearch(
   userId: string,
   limit: number = 20
 ): Promise<Array<{ id: string; name: string; merchant: string; total: number; type: string; issuedAt: Date; similarity: number }>> {
+  if (!(await hasPgvector())) return []
   const embedding = await generateEmbedding(query, userId)
   const vectorStr = `[${embedding.join(",")}]`
 
