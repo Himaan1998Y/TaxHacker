@@ -2,10 +2,34 @@ import crypto from "crypto"
 
 const ALGORITHM = "aes-256-gcm"
 
+// Defence-in-depth: lib/config.ts already throws at boot in production if
+// ENCRYPTION_KEY is missing. This second check lives at the encryption call
+// site itself so any code path that reaches encrypt()/decrypt() without a
+// valid key in production fails loudly instead of silently storing PII
+// (GSTIN, PAN, API keys) in plaintext. In dev/test we preserve the
+// plaintext fallback but log it once so it is visible, not silent.
+const isProductionRuntime =
+  process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
+
+let devPlaintextWarningLogged = false
+
 function getKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY
   if (!key || key.length !== 64) {
-    // No encryption key configured — return plaintext (dev mode)
+    if (isProductionRuntime) {
+      throw new Error(
+        "[ENCRYPTION] ENCRYPTION_KEY is missing or malformed in production. " +
+          "Expected a 64-character hex string (generate with: openssl rand -hex 32). " +
+          "Refusing to encrypt PII as plaintext."
+      )
+    }
+    if (!devPlaintextWarningLogged) {
+      devPlaintextWarningLogged = true
+      console.warn(
+        "[ENCRYPTION] ENCRYPTION_KEY not set — falling back to plaintext storage (development only). " +
+          "Set ENCRYPTION_KEY to a 64-character hex string before using real data."
+      )
+    }
     return Buffer.alloc(0)
   }
   return Buffer.from(key, "hex")
