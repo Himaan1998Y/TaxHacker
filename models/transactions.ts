@@ -249,6 +249,12 @@ export const getGSTSummary = cache(
 )
 
 async function syncTransactionFiles(id: string, userId: string, fileIds: string[]) {
+  // Reads are safe to run outside the transaction — they only establish
+  // the target state. The mutations below must be atomic, though: without
+  // $transaction, a crash between the three writes leaves the JSON
+  // `files` column on the transaction row out of sync with the
+  // TransactionFile join table, and future reads produce ghost files or
+  // missing attachments.
   const validFiles = await prisma.file.findMany({
     where: { id: { in: fileIds }, userId },
     select: { id: true },
@@ -264,30 +270,47 @@ async function syncTransactionFiles(id: string, userId: string, fileIds: string[
   const toAdd = validFileIds.filter((fileId) => !existingFileIds.includes(fileId))
   const toRemove = existingFileIds.filter((fileId) => !validFileIds.includes(fileId))
 
-  await prisma.transaction.update({
-    where: { id, userId },
-    data: { files: validFileIds },
+  // No-op short circuit: if the target state already matches, skip the
+  // write transaction entirely. Avoids row lock churn on the common
+  // "user edited something unrelated" save path.
+  if (toAdd.length === 0 && toRemove.length === 0) {
+    // Still update the JSON column to normalise ordering in case the
+    // caller passed a reordered list.
+    await prisma.transaction.update({
+      where: { id, userId },
+      data: { files: validFileIds },
+    })
+    return
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.update({
+      where: { id, userId },
+      data: { files: validFileIds },
+    })
+
+    if (toRemove.length > 0) {
+      await tx.transactionFile.deleteMany({
+        where: {
+          transactionId: id,
+          userId,
+          fileId: { in: toRemove },
+        },
+      })
+    }
+
+    if (toAdd.length > 0) {
+      // createMany collapses N round-trips into one SQL INSERT. The join
+      // table has no cascading side effects so this is safe.
+      await tx.transactionFile.createMany({
+        data: toAdd.map((fileId) => ({
+          transactionId: id,
+          fileId,
+          userId,
+        })),
+      })
+    }
   })
-
-  if (toRemove.length > 0) {
-    await prisma.transactionFile.deleteMany({
-      where: {
-        transactionId: id,
-        userId,
-        fileId: { in: toRemove },
-      },
-    })
-  }
-
-  for (const fileId of toAdd) {
-    await prisma.transactionFile.create({
-      data: {
-        transactionId: id,
-        fileId,
-        userId,
-      },
-    })
-  }
 }
 
 export type CreateTransactionSuccess = {
