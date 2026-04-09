@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatNumber } from "@/lib/utils"
 import { generateGSTR3B, generateGSTR3BJSON, GSTR3BSummary } from "@/lib/gstr3b"
 import { getIndianFY } from "@/lib/indian-fy"
-import { AlertTriangle, Download, FileText, IndianRupee } from "lucide-react"
+import { AlertTriangle, Download, FileText, IndianRupee, Info } from "lucide-react"
 
 type Props = {
   transactions: any[]
@@ -76,6 +76,19 @@ export function GSTR3BReport({ transactions, businessGSTIN, businessStateCode }:
         <div className="text-sm text-yellow-800">
           <strong>AI-extracted data</strong> — Verify all amounts before using for GSTR-3B filing.
           ITC eligibility is based on category classification — ensure categories are correctly assigned.
+        </div>
+      </div>
+
+      {/* Table 3.2 auto-populated notice */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+        <div className="text-sm text-blue-800">
+          <strong>Table 3.2 is auto-populated by the GST portal.</strong>{" "}
+          Since April 2025 (GSTN Phase-III), Table 3.2 — inter-state supplies made to unregistered,
+          composition and UIN holders — is filled automatically from your GSTR-1 and is not editable
+          on the portal. TaxHacker intentionally does not compute this table; file Table 3.1 and
+          Table 4 from this report, then review the system-filled values on the portal before
+          submission.
         </div>
       </div>
 
