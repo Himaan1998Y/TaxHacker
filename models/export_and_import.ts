@@ -205,8 +205,13 @@ export const EXPORT_AND_IMPORT_FIELD_MAP: Record<string, ExportImportFieldSettin
 export const importProject = async (userId: string, name: string) => {
   const code = codeFromName(name)
 
+  // Scope match to the current user. Without this filter a CSV import from
+  // user A that references a project name already owned by user B would
+  // return user B's project and attach user A's transactions to user B's
+  // tenant space (cross-tenant data leak).
   const existingProject = await prisma.project.findFirst({
     where: {
+      userId,
       OR: [{ code }, { name }],
     },
   })
@@ -221,8 +226,11 @@ export const importProject = async (userId: string, name: string) => {
 export const importCategory = async (userId: string, name: string) => {
   const code = codeFromName(name)
 
+  // See importProject above — the userId filter prevents cross-tenant leaks
+  // during CSV import when two users happen to pick the same category name.
   const existingCategory = await prisma.category.findFirst({
     where: {
+      userId,
       OR: [{ code }, { name }],
     },
   })
