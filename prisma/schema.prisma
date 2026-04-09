@@ -302,3 +302,23 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// Durable rate-limit counters. Replaces the previous in-process Map in
+// app/api/agent/auth.ts — the Map reset on every container restart, and
+// counters do not survive rolling deploys. This table persists counters
+// across restarts and (future) horizontal replicas.
+//
+// `bucket` is a free-form namespace string chosen by the caller so the
+// same table can back multiple rate limiters (per-agent, per-IP, etc.)
+// without key collisions.
+model RateLimit {
+  bucket    String
+  key       String
+  count     Int      @default(0)
+  resetAt   DateTime @map("reset_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([bucket, key])
+  @@index([resetAt])
+  @@map("rate_limits")
+}

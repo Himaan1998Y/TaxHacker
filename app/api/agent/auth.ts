@@ -5,10 +5,11 @@ import config from "@/lib/config"
 import { User } from "@/prisma/client"
 import crypto from "crypto"
 import { decrypt } from "@/lib/encryption"
+import { checkRateLimit } from "@/lib/rate-limit-db"
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
 const RATE_LIMIT_MAX = 60 // 60 requests per minute
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_BUCKET = "agent-api"
 
 /** SHA-256 hash of an API key — used for storage and comparison */
 function hashApiKey(key: string): string {
@@ -111,28 +112,34 @@ export async function authenticateAgent(
     )
   }
 
-  // Rate limiting
-  const now = Date.now()
-  const rateKey = user.id
-  const entry = rateLimitMap.get(rateKey)
+  // Rate limiting — backed by the rate_limits Postgres table so counters
+  // survive container restarts and rolling deploys. The previous in-
+  // process Map reset on every deploy, meaning a user could burn through
+  // 60 requests, trigger a deploy (or wait for one), and repeat forever.
+  const rateLimitResult = await checkRateLimit(RATE_LIMIT_BUCKET, user.id, {
+    maxRequests: RATE_LIMIT_MAX,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+  })
 
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= RATE_LIMIT_MAX) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Max 60 requests per minute." },
-        { status: 429 }
-      )
-    }
-    entry.count++
-  } else {
-    rateLimitMap.set(rateKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-  }
-
-  // Clean up old entries periodically
-  if (rateLimitMap.size > 100) {
-    for (const [key, val] of rateLimitMap) {
-      if (now > val.resetAt) rateLimitMap.delete(key)
-    }
+  if (!rateLimitResult.allowed) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((rateLimitResult.resetAt.getTime() - Date.now()) / 1000)
+    )
+    return NextResponse.json(
+      {
+        error: `Rate limit exceeded. Max ${RATE_LIMIT_MAX} requests per minute.`,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSeconds),
+          "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.floor(rateLimitResult.resetAt.getTime() / 1000)),
+        },
+      }
+    )
   }
 
   return { user }
