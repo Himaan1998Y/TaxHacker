@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateGSTR3B, generateGSTR3BJSON } from '@/lib/gstr3b'
+import { generateGSTR3B, generateGSTR3BJSON, DEFAULT_ITC_BLOCKED_KEYWORDS } from '@/lib/gstr3b'
 
 const validGSTIN = '27AAPFU0939F1ZV'
 
@@ -607,5 +607,168 @@ describe('generateGSTR3BJSON portal shape', () => {
     expect(json.sup_details.osup_det.txval).toBe(0)
     expect(json.sup_details.rcm_sup.txval).toBe(0)
     expect(json.sup_details.non_gst_sup.txval).toBe(0)
+  })
+})
+
+// ─── Section 17(5) blocked ITC — Budget 2025-26 refresh ─────────────
+//
+// These regression tests pin down the expanded default keyword list
+// and the case-insensitive matching. The audit flagged that the old
+// list was incomplete (missing CSR, construction, LTA, works contract,
+// etc.) and that the matcher was case-sensitive so "Food_Beverage"
+// slipped through. Each test uses a category code that the old list
+// or the old matcher would have let through as eligible ITC.
+
+function expenseTx(overrides: Record<string, any>) {
+  return {
+    id: `exp-${Math.random().toString(36).slice(2, 8)}`,
+    name: 'Supplier',
+    merchant: 'Supplier',
+    invoiceNumber: `INV-ITC-${Math.random().toString(36).slice(2, 6)}`,
+    gstin: null,
+    total: 100000,
+    taxableAmount: 100000,
+    gstRate: 18,
+    cgst: 9000,
+    sgst: 9000,
+    igst: 0,
+    cess: 0,
+    hsnCode: '9999',
+    placeOfSupply: 'Maharashtra',
+    supplyType: undefined,
+    reverseCharge: false,
+    issuedAt: new Date().toISOString(),
+    type: 'expense' as const,
+    ...overrides,
+  }
+}
+
+describe('Section 17(5) default blocked-ITC list — Budget 2025-26 refresh', () => {
+  it('exports the keyword list for consumption by other modules', () => {
+    expect(Array.isArray(DEFAULT_ITC_BLOCKED_KEYWORDS)).toBe(true)
+    expect(DEFAULT_ITC_BLOCKED_KEYWORDS.length).toBeGreaterThan(20)
+  })
+
+  it('blocks ITC on CSR expenses (2026 clarification)', () => {
+    const report = generateGSTR3B(
+      [expenseTx({ categoryCode: 'csr_donation' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    expect(report.table4.reversed[0].cgst).toBe(90)
+    expect(report.table4.available[0].cgst).toBe(0)
+  })
+
+  it('blocks ITC on construction of immovable property (clause d)', () => {
+    const report = generateGSTR3B(
+      [expenseTx({ categoryCode: 'office_construction' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    expect(report.table4.reversed[0].cgst).toBe(90)
+    expect(report.table4.available[0].cgst).toBe(0)
+  })
+
+  it('blocks ITC on works contract services', () => {
+    const report = generateGSTR3B(
+      [expenseTx({ categoryCode: 'works_contract_repair' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    expect(report.table4.reversed[0].cgst).toBe(90)
+  })
+
+  it('blocks ITC on life and health insurance', () => {
+    const reportLife = generateGSTR3B(
+      [expenseTx({ categoryCode: 'life_insurance_employee' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    const reportHealth = generateGSTR3B(
+      [expenseTx({ categoryCode: 'health_insurance_premium' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    expect(reportLife.table4.reversed[0].cgst).toBe(90)
+    expect(reportHealth.table4.reversed[0].cgst).toBe(90)
+  })
+
+  it('blocks ITC on LTA (travel benefits to employees on vacation)', () => {
+    const report = generateGSTR3B(
+      [expenseTx({ categoryCode: 'lta_payment' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    expect(report.table4.reversed[0].cgst).toBe(90)
+  })
+
+  it('blocks ITC on gym / club / fitness memberships', () => {
+    const report = generateGSTR3B(
+      [expenseTx({ categoryCode: 'gym_membership' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    expect(report.table4.reversed[0].cgst).toBe(90)
+  })
+
+  it('matches blocked keywords case-insensitively', () => {
+    // Before the fix, the matcher used a raw .includes() on the literal
+    // categoryCode, so "Food_Beverage" with a capital F would slip
+    // through as eligible ITC.
+    const report = generateGSTR3B(
+      [expenseTx({ categoryCode: 'Food_Beverage' })],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    expect(report.table4.reversed[0].cgst).toBe(90)
+    expect(report.table4.available[0].cgst).toBe(0)
+  })
+
+  it('leaves legitimate business expenses as eligible ITC', () => {
+    const report = generateGSTR3B(
+      [
+        expenseTx({ categoryCode: 'stationery' }),
+        expenseTx({ categoryCode: 'software_subscription' }),
+        expenseTx({ categoryCode: 'consulting_fees' }),
+      ],
+      '27',
+      validGSTIN,
+      '052026',
+      []
+    )
+    // 3 × ₹9000 CGST = ₹27000 (divided by 100 for rounded output)
+    expect(report.table4.available[0].cgst).toBe(270)
+    expect(report.table4.reversed[0].cgst).toBe(0)
+  })
+
+  it('user-configured blocked categories still take precedence', () => {
+    // A user can mark any category as blocked via the settings UI; the
+    // override passes through itcBlockedCategories. A plain "legal_fees"
+    // with no default match should still be blocked when passed in.
+    const report = generateGSTR3B(
+      [expenseTx({ categoryCode: 'legal_fees' })],
+      '27',
+      validGSTIN,
+      '052026',
+      ['legal_fees']
+    )
+    expect(report.table4.reversed[0].cgst).toBe(90)
+    expect(report.table4.available[0].cgst).toBe(0)
   })
 })

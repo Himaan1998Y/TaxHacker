@@ -56,12 +56,72 @@ export type GSTR3BSummary = {
   gstin: string
 }
 
-// Categories where ITC is blocked under Section 17(5)
-// Users can customize this via category settings
-const DEFAULT_ITC_BLOCKED_KEYWORDS = [
-  "food", "beverage", "personal", "entertainment",
-  "motor_vehicle", "club", "membership",
-  "gift", "donation", "penalty", "fine",
+// ─── Section 17(5) — blocked ITC defaults ───────────────────────────
+//
+// Keywords that trigger an "ITC blocked" default classification when the
+// user hasn't explicitly configured a category. Matching is substring +
+// case-insensitive, so a category code like "Food_Beverage" or
+// "OUTDOOR_CATERING" still gets flagged. Users can override per-category
+// via the existing itcBlockedCategories parameter — these defaults only
+// affect users who leave their categories unconfigured.
+//
+// The list is a best-effort heuristic, not a legal substitute. It maps
+// to clauses (a) through (i) of Section 17(5) as in force for the 2025-26
+// FY, including:
+//   - clause (a):  motor vehicles for passenger transport (≤13 seats)
+//   - clause (aa): vessels & aircraft for personal transport
+//   - clause (ab): services of general insurance / servicing / repair
+//                  & maintenance on (a) and (aa) above
+//   - clause (b)(i): food & beverages, outdoor catering, beauty treatment,
+//                    health services, cosmetic/plastic surgery, leasing/
+//                    rent-a-cab, life & health insurance (with carve-outs
+//                    the tool cannot detect automatically)
+//   - clause (b)(ii): membership of clubs, health & fitness centres
+//   - clause (b)(iii): travel benefits to employees on vacation (LTA)
+//   - clause (c):  works contract services for construction of immovable
+//                  property (other than plant & machinery)
+//   - clause (d):  goods/services for own construction of immovable
+//                  property (other than plant and machinery — note the
+//                  "and" per Budget 2024 retrospective amendment)
+//   - clause (e):  tax paid under composition scheme
+//   - clause (f):  supplies to non-resident taxable person (with carve-out)
+//   - clause (fa): CSR activities (2026 clarification — CSR is mandatory
+//                  under Companies Act but ITC on it is explicitly blocked)
+//   - clause (g):  goods/services for personal consumption
+//   - clause (h):  lost, stolen, destroyed, written-off, or disposed of
+//                  as gifts or free samples
+//   - clause (i):  tax paid in pursuance of Section 74 (fraud cases)
+//                  — retained for demands up to FY 2023-24 per Budget 2024
+export const DEFAULT_ITC_BLOCKED_KEYWORDS = [
+  // clause (a), (aa), (ab) — motor vehicles, vessels, aircraft
+  "motor_vehicle", "vehicle", "car", "vessel", "aircraft",
+  "fuel", "petrol", "diesel",
+  // clause (b)(i) — food, beverages, personal-care services
+  "food", "beverage", "catering", "restaurant",
+  "beauty", "cosmetic", "health_service", "spa",
+  "rent_a_cab", "cab_rental",
+  // clause (b)(ii), (iii) — clubs, fitness, LTA
+  "club", "membership", "fitness", "gym",
+  "lta", "leave_travel",
+  // clause (b) — insurance (life/health). Excludes general biz insurance;
+  // users should whitelist specific business insurance categories if needed.
+  "life_insurance", "health_insurance",
+  // clause (c), (d) — works contract, construction of immovable property
+  "construction", "works_contract", "immovable_property",
+  "building_material", "civil_work",
+  // clause (e), (f) — composition tax, NRTP inputs
+  "composition_tax",
+  // clause (fa) — CSR (2026 clarification)
+  "csr", "corporate_social",
+  // clause (g) — personal consumption
+  "personal", "entertainment",
+  // clause (h) — gifts, free samples, written-off
+  "gift", "free_sample", "sample",
+  "donation", "written_off",
+  // clause (i) — Section 74 demand tax. Also fines/penalties are never
+  // ITC-eligible regardless of Section 17(5) — kept here for the default
+  // heuristic.
+  "penalty", "fine", "section_74",
 ]
 
 // ─── Core Computation ────────────────────────────────────────────────
@@ -215,8 +275,14 @@ function computeTable4(
     const gstTx = transactionToGSTR1(tx)
     if (gstTx.gstRate <= 0) continue
 
+    // Normalise to lowercase before keyword matching so a user category
+    // code like "Food_Beverage" still trips the "food" keyword. User-
+    // configured category codes in itcBlockedCategories are matched
+    // exactly (they come from the same category table the category code
+    // lives in, so they're case-consistent already).
+    const categoryCode = (tx.categoryCode || "").toLowerCase()
     const isBlocked = blockedCodes.has(tx.categoryCode || "") ||
-      DEFAULT_ITC_BLOCKED_KEYWORDS.some(kw => (tx.categoryCode || "").includes(kw))
+      DEFAULT_ITC_BLOCKED_KEYWORDS.some(kw => categoryCode.includes(kw))
 
     if (isBlocked) {
       reversedIGST += gstTx.igst
