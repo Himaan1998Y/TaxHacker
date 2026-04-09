@@ -8,15 +8,24 @@ const ALGORITHM = "aes-256-gcm"
 // valid key in production fails loudly instead of silently storing PII
 // (GSTIN, PAN, API keys) in plaintext. In dev/test we preserve the
 // plaintext fallback but log it once so it is visible, not silent.
-const isProductionRuntime =
-  process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
-
+//
+// The NODE_ENV / NEXT_PHASE read is done per-call rather than captured at
+// module import time so that (a) tests can flip NODE_ENV between cases
+// and (b) any weird import-order scenario during next build phase cannot
+// leave a stale "dev mode" flag hanging around at runtime.
 let devPlaintextWarningLogged = false
+
+function isProductionRuntime(): boolean {
+  return (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== "phase-production-build"
+  )
+}
 
 function getKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY
   if (!key || key.length !== 64) {
-    if (isProductionRuntime) {
+    if (isProductionRuntime()) {
       throw new Error(
         "[ENCRYPTION] ENCRYPTION_KEY is missing or malformed in production. " +
           "Expected a 64-character hex string (generate with: openssl rand -hex 32). " +
