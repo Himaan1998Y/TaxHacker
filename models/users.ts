@@ -20,13 +20,18 @@ export const getSelfHostedUser = cache(async () => {
   })
 })
 
-export const getOrCreateSelfHostedUser = cache(async () => {
+// NOT wrapped in cache(): React's cache() is a read-side memoisation
+// helper that dedupes within a single request. Wrapping an upsert in it
+// means subsequent callers in the same request receive the cached Promise
+// and the second upsert never runs — a silent skip on a mutation.
+// Same bug class already fixed for updateSettings() in models/settings.ts.
+export async function getOrCreateSelfHostedUser() {
   return await prisma.user.upsert({
     where: { email: SELF_HOSTED_USER.email },
     update: SELF_HOSTED_USER,
     create: SELF_HOSTED_USER,
   })
-})
+}
 
 export async function getOrCreateCloudUser(email: string, data: Prisma.UserCreateInput) {
   const user = await prisma.user.upsert({
