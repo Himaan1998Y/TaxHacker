@@ -13,7 +13,14 @@ export async function POST(request: Request) {
   }
 
   const expected = crypto.createHmac("sha256", webhookSecret).update(body).digest("hex")
-  if (signature !== expected) {
+  // Constant-time comparison. A plain !== leaks the length of the matching
+  // prefix via timing differences. timingSafeEqual requires equal-length
+  // buffers, so reject length mismatches explicitly — that check is already
+  // constant-time at the OS level (single length read) and reveals nothing
+  // about the bytes.
+  const sigBuf = Buffer.from(signature, "hex")
+  const expectedBuf = Buffer.from(expected, "hex")
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
     return new NextResponse("Invalid signature", { status: 400 })
   }
 
