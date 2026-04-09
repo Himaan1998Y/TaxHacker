@@ -223,6 +223,12 @@ model Transaction {
 
   @@index([userId])
   @@index([status])
+  // Composite index covering the (userId, status) filter pair that every
+  // hot read path uses. The standalone @@index([userId]) above is kept
+  // for queries that do not constrain status, and the standalone
+  // @@index([status]) is kept for analytics that sweep the whole table.
+  // Postgres will pick whichever plan is cheapest.
+  @@index([userId, status])
   @@index([projectCode])
   @@index([categoryCode])
   @@index([issuedAt])

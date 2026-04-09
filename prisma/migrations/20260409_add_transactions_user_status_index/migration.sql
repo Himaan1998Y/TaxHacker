@@ -1,0 +1,21 @@
+-- prisma-migrate-disable-next-transaction
+-- CREATE INDEX CONCURRENTLY cannot run inside a transaction block.
+-- Prisma only skips the automatic transaction wrapper when the migration
+-- file contains a single statement AND/OR when the first line is the
+-- disable directive above. We use both — belt and braces.
+--
+-- Why CONCURRENTLY: a plain CREATE INDEX takes ACCESS EXCLUSIVE on the
+-- transactions table, blocking writes until the index is fully built.
+-- On a multi-tenant deployment with thousands of rows that turns a
+-- rolling deploy into a read-only window. CONCURRENTLY builds the index
+-- in two passes and only takes brief SHARE UPDATE EXCLUSIVE locks,
+-- allowing writes throughout.
+--
+-- IF NOT EXISTS: CONCURRENTLY failures leave a partial INVALID index
+-- behind which we'd want to drop and retry; IF NOT EXISTS lets a
+-- subsequent boot of the migration re-run cleanly after such a failure.
+--
+-- Index name matches Prisma's convention so `@@index([userId, status])`
+-- in schema.prisma maps onto this existing index during introspection.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "transactions_user_id_status_idx"
+  ON "transactions" ("user_id", "status");
