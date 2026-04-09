@@ -38,6 +38,8 @@ const fixture: GSTR1Summary = {
   at: [],
   atadj: [],
   hsn: [],
+  hsnB2B: [],
+  hsnB2C: [],
   nil: [{
     description: 'Nil Rated / Exempt Supplies',
     nilRatedInterB2B: 0,

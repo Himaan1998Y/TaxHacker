@@ -108,25 +108,34 @@ export async function GET(request: Request) {
     zip.file("b2cs.csv", csv)
   }
 
-  // HSN CSV
+  // HSN CSVs — Table 12 is bifurcated into B2B and B2C tabs from the
+  // April 2025 tax period (GSTN Phase-III). We emit separate files per
+  // tab plus the legacy combined file so both old and new offline tools
+  // keep working during the rollover.
+  const hsnHeaders = [
+    "HSN/SAC", "Description", "UQC", "Total Quantity", "Total Value",
+    "Taxable Value", "IGST", "CGST", "SGST", "Cess",
+  ]
+  const hsnRowFor = (entry: typeof report.hsn[number]) => [
+    entry.hsnCode,
+    entry.description,
+    "NOS",
+    entry.totalQuantity,
+    entry.totalValue,
+    entry.taxableValue,
+    entry.igst,
+    entry.cgst,
+    entry.sgst,
+    entry.cess,
+  ]
+  if (report.hsnB2B.length > 0) {
+    zip.file("hsn_b2b.csv", await generateCSV(hsnHeaders, report.hsnB2B.map(hsnRowFor)))
+  }
+  if (report.hsnB2C.length > 0) {
+    zip.file("hsn_b2c.csv", await generateCSV(hsnHeaders, report.hsnB2C.map(hsnRowFor)))
+  }
   if (report.hsn.length > 0) {
-    const csv = await generateCSV(
-      ["HSN/SAC", "Description", "UQC", "Total Quantity", "Total Value",
-       "Taxable Value", "IGST", "CGST", "SGST", "Cess"],
-      report.hsn.map(entry => [
-        entry.hsnCode,
-        entry.description,
-        "NOS",
-        entry.totalQuantity,
-        entry.totalValue,
-        entry.taxableValue,
-        entry.igst,
-        entry.cgst,
-        entry.sgst,
-        entry.cess,
-      ])
-    )
-    zip.file("hsn.csv", csv)
+    zip.file("hsn.csv", await generateCSV(hsnHeaders, report.hsn.map(hsnRowFor)))
   }
 
   // Nil/Exempt CSV

@@ -347,9 +347,21 @@ export function GSTR1Report({ transactions, businessGSTIN, businessStateCode }: 
         </SectionCard>
       )}
 
-      {/* HSN Section */}
-      {report.hsn.length > 0 && (
-        <SectionCard title="HSN Summary" count={report.hsn.length}>
+      {/* HSN Sections — Table 12 is bifurcated into B2B and B2C tabs from
+          April 2025 tax period (GSTN Phase-III). We render each tab in its
+          own section so what appears here mirrors what you will upload to
+          the portal. */}
+      {(report.hsnB2B.length > 0 || report.hsnB2C.length > 0) && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+          Table 12 is now reported in two tabs — <strong>B2B</strong>{" "}
+          (supplies to registered recipients) and <strong>B2C</strong>{" "}
+          (supplies to unregistered recipients) — effective from the
+          April 2025 tax period. Each HSN row below lands in the tab
+          the portal expects.
+        </div>
+      )}
+      {report.hsnB2B.length > 0 && (
+        <SectionCard title="HSN Summary — B2B (Table 12)" count={report.hsnB2B.length}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted-foreground border-b">
@@ -363,7 +375,37 @@ export function GSTR1Report({ transactions, businessGSTIN, businessStateCode }: 
               </tr>
             </thead>
             <tbody>
-              {report.hsn.map((entry, i) => (
+              {report.hsnB2B.map((entry, i) => (
+                <tr key={i} className="border-b last:border-0">
+                  <td className="py-2 font-mono">{entry.hsnCode}</td>
+                  <td className="py-2 text-right">{entry.totalQuantity}</td>
+                  <td className="py-2 text-right">₹{formatNumber(entry.totalValue)}</td>
+                  <td className="py-2 text-right">₹{formatNumber(entry.taxableValue)}</td>
+                  <td className="py-2 text-right">₹{formatNumber(entry.cgst)}</td>
+                  <td className="py-2 text-right">₹{formatNumber(entry.sgst)}</td>
+                  <td className="py-2 text-right">₹{formatNumber(entry.igst)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+      {report.hsnB2C.length > 0 && (
+        <SectionCard title="HSN Summary — B2C (Table 12)" count={report.hsnB2C.length}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-muted-foreground border-b">
+                <th className="text-left py-2">HSN/SAC</th>
+                <th className="text-right py-2">Qty</th>
+                <th className="text-right py-2">Total Value</th>
+                <th className="text-right py-2">Taxable</th>
+                <th className="text-right py-2">CGST</th>
+                <th className="text-right py-2">SGST</th>
+                <th className="text-right py-2">IGST</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.hsnB2C.map((entry, i) => (
                 <tr key={i} className="border-b last:border-0">
                   <td className="py-2 font-mono">{entry.hsnCode}</td>
                   <td className="py-2 text-right">{entry.totalQuantity}</td>

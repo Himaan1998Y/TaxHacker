@@ -173,7 +173,17 @@ export type GSTR1Summary = {
   cdnur: CDNUREntry[]
   at: ATEntry[]
   atadj: ATEntry[]
+  /**
+   * Legacy combined HSN summary (B2B + B2C). Retained for backward
+   * compatibility with callers and tests that pre-date Phase-III. New
+   * code should prefer hsnB2B and hsnB2C, which map 1:1 onto the two
+   * tabs of Table 12 as required by the GST portal from April 2025.
+   */
   hsn: HSNEntry[]
+  /** Table 12 B2B tab (supplies to registered recipients). */
+  hsnB2B: HSNEntry[]
+  /** Table 12 B2C tab (supplies to unregistered recipients). */
+  hsnB2C: HSNEntry[]
   nil: NilExemptEntry[]
   classified: ClassifiedTransaction[]
   totalWarnings: number
@@ -448,36 +458,47 @@ export function aggregateB2CS(
   }))
 }
 
-export function aggregateHSN(transactions: ClassifiedTransaction[]): HSNEntry[] {
-  const taxable = transactions.filter(tx => tx.section !== "skip" && tx.hsnCode)
-  const grouped: Record<string, HSNEntry> = {}
+// HSN section mapping per GSTN Table-12 Phase-III (April 2025).
+// B2B tab: supplies to registered recipients — sections that carry a GSTIN.
+// B2C tab: supplies to unregistered recipients — B2CL, B2CS, exports,
+// unregistered credit/debit notes, nil-rated and exempt.
+// Advances (at/atadj) and skipped rows are not reported in Table 12.
+const HSN_B2B_SECTIONS: ReadonlySet<GSTR1Section> = new Set<GSTR1Section>(["b2b", "cdnr"])
+const HSN_B2C_SECTIONS: ReadonlySet<GSTR1Section> = new Set<GSTR1Section>([
+  "b2cl",
+  "b2cs",
+  "exp",
+  "cdnur",
+  "nil",
+  "exempt",
+])
 
-  for (const tx of taxable) {
-    const hsn = tx.hsnCode!
-    if (!grouped[hsn]) {
-      grouped[hsn] = {
-        hsnCode: hsn,
-        description: "", // Could be populated from HSN master
-        totalQuantity: 0,
-        totalValue: 0,
-        taxableValue: 0,
-        igst: 0,
-        cgst: 0,
-        sgst: 0,
-        cess: 0,
-      }
-    }
+/**
+ * Classify a transaction's section into the Table-12 HSN bucket it belongs
+ * to. Returns null for sections that are not reported in Table 12 at all
+ * (skip, at, atadj).
+ */
+export function hsnBucketForSection(section: GSTR1Section): "b2b" | "b2c" | null {
+  if (HSN_B2B_SECTIONS.has(section)) return "b2b"
+  if (HSN_B2C_SECTIONS.has(section)) return "b2c"
+  return null
+}
 
-    const taxableValue = tx.taxableAmount
-    grouped[hsn].totalQuantity += 1
-    grouped[hsn].totalValue += tx.total
-    grouped[hsn].taxableValue += taxableValue
-    grouped[hsn].igst += tx.igst
-    grouped[hsn].cgst += tx.cgst
-    grouped[hsn].sgst += tx.sgst
-    grouped[hsn].cess += tx.cess
+function emptyHSNEntry(hsn: string): HSNEntry {
+  return {
+    hsnCode: hsn,
+    description: "", // Could be populated from HSN master
+    totalQuantity: 0,
+    totalValue: 0,
+    taxableValue: 0,
+    igst: 0,
+    cgst: 0,
+    sgst: 0,
+    cess: 0,
   }
+}
 
+function finaliseHSNEntries(grouped: Record<string, HSNEntry>): HSNEntry[] {
   return Object.values(grouped).map(entry => ({
     ...entry,
     totalValue: round(entry.totalValue),
@@ -487,6 +508,85 @@ export function aggregateHSN(transactions: ClassifiedTransaction[]): HSNEntry[] 
     sgst: round(entry.sgst),
     cess: round(entry.cess),
   }))
+}
+
+/**
+ * Aggregate HSN-wise summary for Table-12 of GSTR-1.
+ *
+ * `bucket` controls which sections are included:
+ *   - "b2b":  only supplies to registered recipients (b2b, cdnr)
+ *   - "b2c":  only supplies to unregistered recipients (b2cl, b2cs, exp,
+ *             cdnur, nil, exempt)
+ *   - "all":  both buckets combined (legacy behaviour, retained for the
+ *             combined `report.hsn` field and any callers that want a
+ *             union view)
+ *
+ * Default is "all" to preserve backward compatibility with pre-Phase-III
+ * callers, but new code should use aggregateHSNSplit() which returns both
+ * buckets at once.
+ */
+export function aggregateHSN(
+  transactions: ClassifiedTransaction[],
+  bucket: "b2b" | "b2c" | "all" = "all"
+): HSNEntry[] {
+  const taxable = transactions.filter(tx => {
+    if (!tx.hsnCode) return false
+    const b = hsnBucketForSection(tx.section)
+    if (b === null) return false
+    if (bucket === "all") return true
+    return b === bucket
+  })
+
+  const grouped: Record<string, HSNEntry> = {}
+  for (const tx of taxable) {
+    const hsn = tx.hsnCode!
+    if (!grouped[hsn]) grouped[hsn] = emptyHSNEntry(hsn)
+
+    grouped[hsn].totalQuantity += 1
+    grouped[hsn].totalValue += tx.total
+    grouped[hsn].taxableValue += tx.taxableAmount
+    grouped[hsn].igst += tx.igst
+    grouped[hsn].cgst += tx.cgst
+    grouped[hsn].sgst += tx.sgst
+    grouped[hsn].cess += tx.cess
+  }
+
+  return finaliseHSNEntries(grouped)
+}
+
+/**
+ * Compute both Table-12 HSN buckets in a single pass. Required for
+ * Phase-III GSTR-1 filings (April 2025 onward) where Table 12 is
+ * bifurcated into B2B and B2C tabs.
+ */
+export function aggregateHSNSplit(
+  transactions: ClassifiedTransaction[]
+): { b2b: HSNEntry[]; b2c: HSNEntry[] } {
+  const b2bGrouped: Record<string, HSNEntry> = {}
+  const b2cGrouped: Record<string, HSNEntry> = {}
+
+  for (const tx of transactions) {
+    if (!tx.hsnCode) continue
+    const bucket = hsnBucketForSection(tx.section)
+    if (bucket === null) continue
+
+    const grouped = bucket === "b2b" ? b2bGrouped : b2cGrouped
+    const hsn = tx.hsnCode
+    if (!grouped[hsn]) grouped[hsn] = emptyHSNEntry(hsn)
+
+    grouped[hsn].totalQuantity += 1
+    grouped[hsn].totalValue += tx.total
+    grouped[hsn].taxableValue += tx.taxableAmount
+    grouped[hsn].igst += tx.igst
+    grouped[hsn].cgst += tx.cgst
+    grouped[hsn].sgst += tx.sgst
+    grouped[hsn].cess += tx.cess
+  }
+
+  return {
+    b2b: finaliseHSNEntries(b2bGrouped),
+    b2c: finaliseHSNEntries(b2cGrouped),
+  }
 }
 
 export function aggregateNil(
@@ -653,7 +753,11 @@ export function generateGSTR1Report(
   const cdnur = aggregateCDNUR(classified)
   const at = aggregateAT(classified, "at")
   const atadj = aggregateAT(classified, "atadj")
-  const hsn = aggregateHSN(classified)
+  const hsnSplit = aggregateHSNSplit(classified)
+  // Legacy combined field kept in sync with the split: same rows in the
+  // same order (B2B first, then B2C) so any pre-Phase-III caller still
+  // sees the full HSN summary.
+  const hsn: HSNEntry[] = [...hsnSplit.b2b, ...hsnSplit.b2c]
   const nil = aggregateNil(classified, businessStateCode)
 
   // Count by section
@@ -693,6 +797,8 @@ export function generateGSTR1Report(
     at,
     atadj,
     hsn,
+    hsnB2B: hsnSplit.b2b,
+    hsnB2C: hsnSplit.b2c,
     nil,
     classified,
     totalWarnings,
@@ -701,6 +807,23 @@ export function generateGSTR1Report(
 }
 
 // ─── GSTR-1 JSON (GST Portal Format) ────────────────────────────────
+
+// Single HSN row serializer shared between the legacy combined tab and
+// the new B2B/B2C tabs. Keeps all three outputs in lockstep.
+function hsnJsonRow(entry: HSNEntry) {
+  return {
+    hsn_sc: entry.hsnCode,
+    desc: entry.description || "",
+    uqc: "NOS",
+    qty: entry.totalQuantity,
+    val: entry.totalValue,
+    txval: entry.taxableValue,
+    iamt: entry.igst,
+    camt: entry.cgst,
+    samt: entry.sgst,
+    csamt: entry.cess,
+  }
+}
 
 export function generateGSTR1JSON(
   report: GSTR1Summary,
@@ -801,19 +924,20 @@ export function generateGSTR1JSON(
       samt: entry.sgst,
       csamt: entry.cess,
     })),
+    // Table 12 is bifurcated into B2B and B2C tabs from the April 2025
+    // tax period onwards (GSTN Phase-III). We emit:
+    //  - hsn_b2b / hsn_b2c: the two tabs the portal now expects
+    //  - hsn: the legacy combined shape, preserved so that earlier
+    //    offline-tool versions and third-party consumers that still read
+    //    a single hsn.data array don't break mid-migration.
+    hsn_b2b: {
+      data: report.hsnB2B.map(hsnJsonRow),
+    },
+    hsn_b2c: {
+      data: report.hsnB2C.map(hsnJsonRow),
+    },
     hsn: {
-      data: report.hsn.map(entry => ({
-        hsn_sc: entry.hsnCode,
-        desc: entry.description || "",
-        uqc: "NOS",
-        qty: entry.totalQuantity,
-        val: entry.totalValue,
-        txval: entry.taxableValue,
-        iamt: entry.igst,
-        camt: entry.cgst,
-        samt: entry.sgst,
-        csamt: entry.cess,
-      }))
+      data: report.hsn.map(hsnJsonRow),
     },
       nil: {
       inv: report.nil.flatMap(entry => [
