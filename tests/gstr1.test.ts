@@ -73,6 +73,36 @@ describe('GSTR-1 core helpers', () => {
     expect(result.section).toBe('b2cl')
   })
 
+  // Regression for B2CL threshold reduction (Notification 12/2024-CT,
+  // effective 1 Aug 2024). Under the old ₹2.5L threshold a ₹1.5L inter-state
+  // B2C invoice would have aggregated into B2CS. Under the current ₹1L
+  // threshold it must be reported invoice-wise in B2CL (Table 5A).
+  it('classifies inter-state ₹1.5L B2C as b2cl under the post-Aug-2024 ₹1L threshold', () => {
+    const tx = makeBaseTx({
+      gstin: null,
+      total: 150000,
+      taxableAmount: 150000,
+      placeOfSupply: 'Delhi',
+      supplyType: null,
+    })
+    const result = classifyTransaction(tx, '29')
+    expect(result.section).toBe('b2cl')
+  })
+
+  // Boundary: exactly ₹1L should still be B2CS because the GST rule says
+  // "exceeding ₹1 lakh" (strict >, not >=).
+  it('keeps an inter-state invoice at exactly ₹1L as b2cs (threshold is strict)', () => {
+    const tx = makeBaseTx({
+      gstin: null,
+      total: 100000,
+      taxableAmount: 100000,
+      placeOfSupply: 'Delhi',
+      supplyType: null,
+    })
+    const result = classifyTransaction(tx, '29')
+    expect(result.section).toBe('b2cs')
+  })
+
   it('classifies default outward supply as b2cs', () => {
     const tx = makeBaseTx({
       gstin: null,

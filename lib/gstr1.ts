@@ -182,7 +182,12 @@ export type GSTR1Summary = {
 
 // ─── Constants ───────────────────────────────────────────────────────
 
-const B2CL_THRESHOLD = 250000 // ₹2,50,000 — B2C Large threshold for inter-state
+// B2C Large threshold for inter-state supplies to unregistered persons.
+// Reduced from ₹2,50,000 to ₹1,00,000 by Notification No. 12/2024-Central
+// Tax (10 Jul 2024), effective 1 Aug 2024. Invoices above this threshold
+// must be reported invoice-wise in Table 5A of GSTR-1 (B2CL), not
+// aggregated in Table 7 (B2CS).
+const B2CL_THRESHOLD = 100000
 
 const NIL_CATEGORIES = ["gst_nil_rated", "nil_rated"]
 const CREDIT_DEBIT_NOTE_TYPES = ["credit_note", "debit_note", "CREDIT_NOTE", "DEBIT_NOTE", "CDN", "DNR"]
