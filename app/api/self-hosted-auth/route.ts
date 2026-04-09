@@ -71,13 +71,22 @@ export async function POST(request: NextRequest) {
 
     logSecurityEvent("auth.login_success", userId, {}, ip, ua)
 
-    // Set auth cookie — httpOnly, 30 days
-    // Cookie stores HMAC token, not the raw password
-    const isSecure = request.headers.get("x-forwarded-proto") === "https" || request.url.startsWith("https")
+    // Set auth cookie — httpOnly, 30 days. Cookie stores an HMAC token,
+    // not the raw password.
+    //
+    // The `secure` flag must be derived from NODE_ENV, not from the
+    // x-forwarded-proto header or request.url. Both are attacker-
+    // controlled through a misconfigured proxy: an attacker-controlled
+    // ingress could spoof x-forwarded-proto=http and force the cookie
+    // to be set without Secure, letting the session cookie leak over
+    // plaintext. Production always runs behind HTTPS (Coolify/Traefik
+    // terminates TLS, internal hop to the app is still HTTP but the
+    // browser talks HTTPS), so NODE_ENV is the right signal.
+    const isProduction = process.env.NODE_ENV === "production"
     const response = NextResponse.json({ success: true })
     response.cookies.set("taxhacker_sh_auth", computeCookieToken(password), {
       httpOnly: true,
-      secure: isSecure,
+      secure: isProduction,
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60, // 30 days
       path: "/",
