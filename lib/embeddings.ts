@@ -217,34 +217,62 @@ export async function embedTransaction(tx: Transaction): Promise<void> {
  * Find similar transactions using cosine similarity.
  * Returns transactions ordered by similarity (most similar first).
  */
+type SimilarTransactionRow = {
+  id: string
+  name: string
+  merchant: string
+  total: number
+  similarity: number
+}
+
 export async function findSimilarTransactions(
   embedding: number[],
   userId: string,
   limit: number = 5,
   excludeId?: string
-): Promise<Array<{ id: string; name: string; merchant: string; total: number; similarity: number }>> {
+): Promise<SimilarTransactionRow[]> {
   if (!(await hasPgvector())) return []
   const vectorStr = `[${embedding.join(",")}]`
 
-  let query = `
-    SELECT id, name, merchant, total,
-           1 - ("embedding" <=> $1::vector) as similarity
-    FROM "transactions"
-    WHERE "user_id" = $2::uuid
-      AND "embedding" IS NOT NULL
-  `
-  const params: any[] = [vectorStr, userId]
-
   if (excludeId) {
-    query += ` AND "id" != $3::uuid`
-    params.push(excludeId)
+    // Query with excludeId filter: $3 and $4 for excludeId and limit
+    const query = `
+      SELECT id, name, merchant, total,
+             1 - ("embedding" <=> $1::vector) as similarity
+      FROM "transactions"
+      WHERE "user_id" = $2::uuid
+        AND "embedding" IS NOT NULL
+        AND "id" != $3::uuid
+      ORDER BY "embedding" <=> $1::vector
+      LIMIT $4
+    `
+    const results = await prisma.$queryRawUnsafe<SimilarTransactionRow[]>(
+      query,
+      vectorStr,
+      userId,
+      excludeId,
+      limit
+    )
+    return results
+  } else {
+    // Query without excludeId filter: $3 for limit
+    const query = `
+      SELECT id, name, merchant, total,
+             1 - ("embedding" <=> $1::vector) as similarity
+      FROM "transactions"
+      WHERE "user_id" = $2::uuid
+        AND "embedding" IS NOT NULL
+      ORDER BY "embedding" <=> $1::vector
+      LIMIT $3
+    `
+    const results = await prisma.$queryRawUnsafe<SimilarTransactionRow[]>(
+      query,
+      vectorStr,
+      userId,
+      limit
+    )
+    return results
   }
-
-  query += ` ORDER BY "embedding" <=> $1::vector LIMIT $${params.length + 1}`
-  params.push(limit)
-
-  const results = await prisma.$queryRawUnsafe(query, ...params)
-  return results as any[]
 }
 
 /**
