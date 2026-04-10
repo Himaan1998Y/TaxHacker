@@ -1,12 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatNumber } from "@/lib/utils"
-import { type GSTSummaryResult } from "@/models/transactions"
+import { type GSTSummaryResult } from "@/models/stats"
 import { IndianRupee } from "lucide-react"
 
 export function GSTSummaryWidget({ gst }: { gst: GSTSummaryResult }) {
 
   // Don't render if no GST data
   if (gst.slabs.length === 0) return null
+
+  // Compute simple input/output aggregates from detailed per-component breakdown
+  const computeInput = (slab: GSTSummaryResult['slabs'][0]) =>
+    slab.inputCGST + slab.inputSGST + slab.inputIGST
+  const computeOutput = (slab: GSTSummaryResult['slabs'][0]) =>
+    slab.outputCGST + slab.outputSGST + slab.outputIGST
 
   return (
     <Card>
@@ -26,16 +32,20 @@ export function GSTSummaryWidget({ gst }: { gst: GSTSummaryResult }) {
             <div className="text-right">Net</div>
           </div>
 
-          {gst.slabs.map((slab) => (
+          {gst.slabs.map((slab) => {
+            const input = computeInput(slab)
+            const output = computeOutput(slab)
+            return (
             <div key={slab.rate} className="grid grid-cols-4 gap-2 text-sm">
               <div className="font-medium">{slab.rate}%</div>
-              <div className="text-right text-red-600">₹{formatNumber(slab.inputGST)}</div>
-              <div className="text-right text-green-600">₹{formatNumber(slab.outputGST)}</div>
-              <div className={`text-right font-medium ${slab.outputGST - slab.inputGST >= 0 ? "text-red-600" : "text-green-600"}`}>
-                ₹{formatNumber(Math.abs(slab.outputGST - slab.inputGST))}
+              <div className="text-right text-red-600">₹{formatNumber(input)}</div>
+              <div className="text-right text-green-600">₹{formatNumber(output)}</div>
+              <div className={`text-right font-medium ${output - input >= 0 ? "text-red-600" : "text-green-600"}`}>
+                ₹{formatNumber(Math.abs(output - input))}
               </div>
             </div>
-          ))}
+          )
+          })}
 
           {/* Totals */}
           <div className="border-t pt-2 grid grid-cols-4 gap-2 text-sm font-semibold">
