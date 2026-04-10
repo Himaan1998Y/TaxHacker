@@ -5,6 +5,7 @@ import {
   generateEmbedding,
   storeTransactionEmbedding,
   transactionToText,
+  isPgvectorAvailable,
 } from "@/lib/embeddings"
 
 /**
@@ -18,6 +19,14 @@ export async function POST(req: NextRequest) {
   const authResult = await authenticateAgent(req)
   if (authResult instanceof NextResponse) return authResult
   const { user } = authResult
+
+  // Check pgvector availability upfront
+  if (!(await isPgvectorAvailable())) {
+    return NextResponse.json(
+      { error: "pgvector extension not enabled. Run the migration first." },
+      { status: 501 }
+    )
+  }
 
   const params = req.nextUrl.searchParams
   const batchSize = Math.min(200, Math.max(1, parseInt(params.get("batchSize") || "50")))
@@ -81,12 +90,6 @@ export async function POST(req: NextRequest) {
         : "No transactions to process",
     })
   } catch (error: any) {
-    if (error.message?.includes("vector") || error.code === "42883") {
-      return NextResponse.json(
-        { error: "pgvector extension not enabled. Run the migration first." },
-        { status: 501 }
-      )
-    }
     console.error("Agent API: backfill error:", error)
     return NextResponse.json({ error: "Backfill failed" }, { status: 500 })
   }
@@ -99,6 +102,16 @@ export async function GET(req: NextRequest) {
   const authResult = await authenticateAgent(req)
   if (authResult instanceof NextResponse) return authResult
   const { user } = authResult
+
+  // Check pgvector availability upfront
+  if (!(await isPgvectorAvailable())) {
+    return NextResponse.json({
+      total: 0,
+      embedded: 0,
+      missing: 0,
+      note: "pgvector migration not yet applied",
+    })
+  }
 
   try {
     const stats: any[] = await prisma.$queryRawUnsafe(
@@ -117,14 +130,6 @@ export async function GET(req: NextRequest) {
       missing: Number(stats[0]?.missing || 0),
     })
   } catch (error: any) {
-    if (error.message?.includes("embedding") || error.code === "42703") {
-      return NextResponse.json({
-        total: 0,
-        embedded: 0,
-        missing: 0,
-        note: "pgvector migration not yet applied",
-      })
-    }
     return NextResponse.json({ error: "Failed to check status" }, { status: 500 })
   }
 }
