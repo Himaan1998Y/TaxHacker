@@ -14,3 +14,9 @@ Sentry.init({
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
   debug: false,
 })
+
+// Warn in production if Sentry is disabled (DSN not set). Sentry treats
+// undefined DSN as a documented no-op, but we want to surface this choice.
+if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  console.warn("Sentry is disabled in production: NEXT_PUBLIC_SENTRY_DSN is not set")
+}
