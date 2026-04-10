@@ -40,12 +40,11 @@ export async function saveSettingsAction(
     return { success: false, error: validatedForm.error.errors.map((e) => e.message).join(", ") }
   }
 
-  for (const key in validatedForm.data) {
-    const value = validatedForm.data[key as keyof typeof validatedForm.data]
-    if (value !== undefined) {
-      await updateSettings(user.id, key, value)
-    }
-  }
+  // Batch all setting updates in parallel (keys are independent)
+  const updates = Object.entries(validatedForm.data)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => updateSettings(user.id, key, value as never))
+  await Promise.all(updates)
 
   revalidatePath("/settings")
   return { success: true }
