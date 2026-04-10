@@ -161,7 +161,7 @@ export const config = {
   // Middleware uses bcryptjs and Node crypto, so must run on Node runtime.
   // On self-hosted (Coolify), this is a no-op (always Node). On Vercel Edge,
   // this ensures the middleware doesn't try to run in Edge Runtime.
-  runtime: "nodejs" as const,
+  runtime: "nodejs",
   // Run on all routes so every response gets a nonce-based CSP header.
   // Static file paths (_next/static, _next/image, favicons) are excluded
   // because Next.js serves them without running middleware anyway.
