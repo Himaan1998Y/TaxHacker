@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { headers } from "next/headers"
 import { matchesKeyword } from "@/lib/utils"
+import { appendToDLQ } from "@/lib/audit-dlq"
 
 export type AuditAction = "create" | "update" | "delete"
 export type AuditEntityType = "transaction" | "file" | "setting" | "category" | "project" | "user"
@@ -18,10 +19,10 @@ export async function logAudit(
   oldValue?: Record<string, unknown> | null,
   newValue?: Record<string, unknown> | null
 ): Promise<void> {
-  try {
-    let ipAddress: string | null = null
-    let userAgent: string | null = null
+  let ipAddress: string | null = null
+  let userAgent: string | null = null
 
+  try {
     try {
       const hdrs = await headers()
       ipAddress = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || hdrs.get("x-real-ip") || null
@@ -45,8 +46,26 @@ export async function logAudit(
       },
     })
   } catch (error) {
-    // Audit logging must never break the main operation
-    console.error("Audit log failed:", error)
+    // DB write failed — try appending to the DLQ file as a fallback
+    const dlqEntry = {
+      userId,
+      entityType,
+      entityId,
+      action,
+      oldValue: oldValue || null,
+      newValue: newValue || null,
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+      createdAt: new Date().toISOString(),
+    }
+
+    try {
+      await appendToDLQ(dlqEntry)
+      console.warn("Audit log written to DLQ file (DB unavailable)")
+    } catch (dlqError) {
+      // Both DB and DLQ writes failed — this is a critical issue (disk full or permissions)
+      console.error("CRITICAL: Audit logging failed on both DB and DLQ file:", dlqError)
+    }
   }
 }
 
