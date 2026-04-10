@@ -8,6 +8,7 @@ import {
 } from "@/lib/files"
 import config from "@/lib/config"
 import { prisma } from "@/lib/db"
+import { parseLocalDate } from "@/lib/utils"
 import { getAppData, setAppData } from "@/models/apps"
 import { createFileWithinTransaction } from "@/models/files"
 import { Transaction, TransactionStatus, TransactionType } from "@/prisma/client"
@@ -111,7 +112,7 @@ export async function saveInvoiceAsTransactionAction(
 
     // Derive the file path deterministically from formData before opening the
     // DB transaction — this avoids needing a pre-created DB row for the path.
-    const issuedAt = new Date(formData.date)
+    const issuedAt = parseLocalDate(formData.date)
 
     // getTransactionFileUploadPath needs a Transaction-shaped object for the
     // issuedAt field only.

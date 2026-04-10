@@ -108,6 +108,20 @@ export function matchesKeyword(haystack: string, needles: readonly string[]): bo
   return needles.some(n => lower.includes(n))
 }
 
+/**
+ * Parse a local date string without timezone conversion.
+ * Date-only strings ("2024-04-09") are interpreted as local midnight,
+ * not UTC midnight. This prevents the off-by-one error where
+ * new Date("2024-04-09") becomes 2024-04-08 in IST.
+ */
+export function parseLocalDate(val: string): Date {
+  // If it's a date-only string, append T00:00:00 to force local interpretation
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    return new Date(val + "T00:00:00")
+  }
+  return new Date(val)
+}
+
 export function encodeFilename(filename: string): string {
   const encoded = encodeURIComponent(filename)
   return `UTF-8''${encoded}`

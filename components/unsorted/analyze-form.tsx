@@ -421,12 +421,12 @@ export default function AnalyzeForm({
         </div>
 
         {formData.total != 0 && formData.currencyCode && formData.currencyCode !== settings.default_currency && (
-          <ToolWindow title={`Exchange rate on ${format(new Date(formData.issuedAt || Date.now()), "LLLL dd, yyyy")}`}>
+          <ToolWindow title={`Exchange rate on ${format(formData.issuedAt || new Date(), "LLLL dd, yyyy")}`}>
             <CurrencyConverterTool
               originalTotal={formData.total}
               originalCurrencyCode={formData.currencyCode}
               targetCurrencyCode={settings.default_currency}
-              date={new Date(formData.issuedAt || Date.now())}
+              date={formData.issuedAt || new Date()}
               onChange={(value) => setFormData((prev) => ({ ...prev, convertedTotal: value }))}
             />
             <input type="hidden" name="convertedCurrencyCode" value={settings.default_currency} />
