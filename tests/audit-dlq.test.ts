@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'fs/promises'
 import path from 'path'
+import os from 'os'
 
 // Mock the modules
 vi.mock('@/lib/db', () => ({
@@ -18,29 +19,26 @@ vi.mock('next/headers', () => ({
 import { appendToDLQ, drainDLQ, getDLQStats } from '@/lib/audit-dlq'
 import { prisma } from '@/lib/db'
 
-// Use a test-specific DLQ file path
-const TEST_DLQ_FILE = '/tmp/test-audit-dlq.jsonl'
-
-// Override the DLQ file path in the module (using a private approach for testing)
-async function cleanupTestDLQ() {
-  try {
-    await fs.unlink(TEST_DLQ_FILE)
-  } catch {
-    // File doesn't exist, that's fine
-  }
-}
-
 describe('audit-dlq', () => {
+  let testDLQDir: string
+
   beforeEach(async () => {
-    await cleanupTestDLQ()
+    // Create unique test directory per test to avoid interference
+    // Use os.tmpdir() for cross-platform compatibility (Windows, Linux, macOS)
+    testDLQDir = path.join(os.tmpdir(), `test-audit-dlq-${Date.now()}-${Math.random()}`)
+    vi.stubEnv('DLQ_DIR', testDLQDir)
     vi.clearAllMocks()
+    // Clean up any existing test directory
+    await fs.rm(testDLQDir, { recursive: true, force: true })
   })
 
   afterEach(async () => {
-    await cleanupTestDLQ()
+    vi.unstubAllEnvs()
+    // Clean up test directory
+    await fs.rm(testDLQDir, { recursive: true, force: true })
   })
 
-  it('writes an entry to the DLQ file', async () => {
+  it('appendToDLQ creates directory and writes valid JSON line', async () => {
     const entry = {
       userId: 'user-123',
       entityType: 'transaction',
@@ -53,28 +51,29 @@ describe('audit-dlq', () => {
       createdAt: new Date().toISOString(),
     }
 
-    // This will fail because we can't override the file path easily, but we test the logic
-    // In real tests, this would use dependency injection or environment variables
-    try {
-      await appendToDLQ(entry)
-      // If it succeeds, verify the file was created and contains the entry
-      const content = await fs.readFile(TEST_DLQ_FILE, 'utf-8')
-      const lines = content.split('\n').filter(l => l.trim())
-      expect(lines.length).toBe(1)
-      const parsed = JSON.parse(lines[0])
-      expect(parsed.userId).toBe('user-123')
-      expect(parsed.entityId).toBe('tx-456')
-    } catch (error) {
-      // Expected in test environment if /app/data is not accessible
-      // In CI, we'd mock fs operations
-    }
+    await appendToDLQ(entry)
+
+    // Verify file was created
+    const dlqFile = path.join(testDLQDir, 'audit-dlq.jsonl')
+    const content = await fs.readFile(dlqFile, 'utf-8')
+    const lines = content.split('\n').filter(l => l.trim())
+
+    expect(lines.length).toBe(1)
+    const parsed = JSON.parse(lines[0])
+    expect(parsed.userId).toBe('user-123')
+    expect(parsed.entityId).toBe('tx-456')
+    expect(parsed.action).toBe('create')
   })
 
-  it('drains entries from DLQ file to database', async () => {
+  it('drainDLQ writes entries to DB and deletes file on success', async () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'log-1' })
     ;(prisma.auditLog.create as any) = mockCreate
 
-    // Create a test DLQ file with entries
+    // Write test DLQ file with 2 entries
+    const dlqDir = testDLQDir
+    await fs.mkdir(dlqDir, { recursive: true })
+    const dlqFile = path.join(dlqDir, 'audit-dlq.jsonl')
+
     const entry1 = {
       userId: 'user-1',
       entityType: 'transaction',
@@ -99,35 +98,111 @@ describe('audit-dlq', () => {
       createdAt: new Date().toISOString(),
     }
 
-    // In a real scenario, we'd write to a test file and call drainDLQ
-    // For this test, we verify the expected behavior by mocking
-    expect(mockCreate).toHaveBeenCalledTimes(0)
+    await fs.writeFile(dlqFile, JSON.stringify(entry1) + '\n' + JSON.stringify(entry2) + '\n')
+
+    // Drain
+    const drained = await drainDLQ()
+
+    // Verify results
+    expect(drained).toBe(2)
+    expect(mockCreate).toHaveBeenCalledTimes(2)
+
+    // Verify files deleted
+    const dlqExists = await fs.stat(dlqFile).catch(() => null)
+    const cursorExists = await fs.stat(path.join(dlqDir, 'audit-dlq.cursor')).catch(() => null)
+    expect(dlqExists).toBeNull()
+    expect(cursorExists).toBeNull()
   })
 
-  it('handles DB failure during drain gracefully', async () => {
-    const mockCreate = vi.fn().mockRejectedValue(new Error('DB connection failed'))
+  it('drainDLQ stops on DB failure and writes cursor for resume', async () => {
+    const mockCreate = vi.fn()
+    mockCreate.mockResolvedValueOnce({ id: 'log-1' })  // First call succeeds
+    mockCreate.mockRejectedValueOnce(new Error('DB connection failed'))  // Second call fails
     ;(prisma.auditLog.create as any) = mockCreate
 
-    // The drain function should catch the error and return the count of successfully drained entries
-    // Since the first entry fails, it returns 0
+    // Write test DLQ file with 3 entries
+    const dlqDir = testDLQDir
+    await fs.mkdir(dlqDir, { recursive: true })
+    const dlqFile = path.join(dlqDir, 'audit-dlq.jsonl')
+
+    const entries = [
+      { userId: 'u1', entityType: 'tx', entityId: 'e1', action: 'create' as const, oldValue: null, newValue: {}, ipAddress: null, userAgent: null, createdAt: new Date().toISOString() },
+      { userId: 'u2', entityType: 'tx', entityId: 'e2', action: 'update' as const, oldValue: {}, newValue: {}, ipAddress: null, userAgent: null, createdAt: new Date().toISOString() },
+      { userId: 'u3', entityType: 'tx', entityId: 'e3', action: 'delete' as const, oldValue: {}, newValue: null, ipAddress: null, userAgent: null, createdAt: new Date().toISOString() },
+    ]
+
+    const content = entries.map(e => JSON.stringify(e)).join('\n') + '\n'
+    await fs.writeFile(dlqFile, content)
+
+    // Drain (should process 1 entry, fail on 2nd)
+    const drained = await drainDLQ()
+
+    // Verify
+    expect(drained).toBe(1)  // Only first entry drained before failure
+    expect(mockCreate).toHaveBeenCalledTimes(2)  // Called twice (once success, once failure)
+
+    // Verify cursor was written (pointing to entry 2)
+    const cursorFile = path.join(dlqDir, 'audit-dlq.cursor')
+    const cursorContent = await fs.readFile(cursorFile, 'utf-8')
+    expect(parseInt(cursorContent.trim())).toBe(1)  // Next to process is entry 1 (0-indexed)
+
+    // Verify DLQ file still exists
+    const dlqExists = await fs.stat(dlqFile).catch(() => null)
+    expect(dlqExists).not.toBeNull()
   })
 
-  it('returns DLQ file stats', async () => {
-    // Test that getDLQStats returns correct structure
-    const stats = await getDLQStats()
-    expect(stats).toHaveProperty('exists')
-    expect(stats).toHaveProperty('size')
-    expect(typeof stats.exists).toBe('boolean')
-    expect(typeof stats.size).toBe('number')
+  it('drainDLQ resumes from cursor on next call (idempotency)', async () => {
+    const mockCreate = vi.fn().mockResolvedValue({ id: 'log-1' })
+    ;(prisma.auditLog.create as any) = mockCreate
+
+    // Write test DLQ file with 3 entries
+    const dlqDir = testDLQDir
+    await fs.mkdir(dlqDir, { recursive: true })
+    const dlqFile = path.join(dlqDir, 'audit-dlq.jsonl')
+    const cursorFile = path.join(dlqDir, 'audit-dlq.cursor')
+
+    const entries = [
+      { userId: 'u1', entityType: 'tx', entityId: 'e1', action: 'create' as const, oldValue: null, newValue: {}, ipAddress: null, userAgent: null, createdAt: new Date().toISOString() },
+      { userId: 'u2', entityType: 'tx', entityId: 'e2', action: 'update' as const, oldValue: {}, newValue: {}, ipAddress: null, userAgent: null, createdAt: new Date().toISOString() },
+      { userId: 'u3', entityType: 'tx', entityId: 'e3', action: 'delete' as const, oldValue: {}, newValue: null, ipAddress: null, userAgent: null, createdAt: new Date().toISOString() },
+    ]
+
+    const content = entries.map(e => JSON.stringify(e)).join('\n') + '\n'
+    await fs.writeFile(dlqFile, content)
+    // Write cursor pointing to entry 2 (entries 0 and 1 already drained)
+    await fs.writeFile(cursorFile, '2')
+
+    // Drain
+    const drained = await drainDLQ()
+
+    // Verify only entry 2 was processed (entries 0 and 1 skipped)
+    expect(drained).toBe(1)
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ entityId: 'e3' }) }))
+
+    // Verify files deleted
+    const dlqExists = await fs.stat(dlqFile).catch(() => null)
+    const cursorExists = await fs.stat(cursorFile).catch(() => null)
+    expect(dlqExists).toBeNull()
+    expect(cursorExists).toBeNull()
   })
 
-  it('getDLQStats returns valid structure', async () => {
-    const stats = await getDLQStats()
-    // getDLQStats should return a valid structure with exists and size fields
+  it('getDLQStats returns correct structure for both existing and missing file', async () => {
+    // Test when file doesn't exist
+    let stats = await getDLQStats()
     expect(stats).toHaveProperty('exists')
     expect(stats).toHaveProperty('size')
-    expect(typeof stats.exists).toBe('boolean')
-    expect(typeof stats.size).toBe('number')
-    expect(stats.size).toBeGreaterThanOrEqual(0)
+    expect(stats.exists).toBe(false)
+    expect(stats.size).toBe(0)
+
+    // Test when file exists
+    const dlqDir = testDLQDir
+    await fs.mkdir(dlqDir, { recursive: true })
+    const dlqFile = path.join(dlqDir, 'audit-dlq.jsonl')
+    await fs.writeFile(dlqFile, '{"userId":"test"}\n')
+
+    stats = await getDLQStats()
+    expect(stats.exists).toBe(true)
+    expect(stats.size).toBeGreaterThan(0)
   })
 })

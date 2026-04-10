@@ -114,15 +114,22 @@ export const getTransactions = cache(
       })
       return { transactions, total }
     } else {
-      const transactions = await prisma.transaction.findMany({
-        where,
-        include: {
-          category: true,
-          project: true,
-        },
-        orderBy,
-      })
-      return { transactions, total: transactions.length }
+      // Safety cap: limit to 10,000 records when pagination is not provided.
+      // Callers MUST receive the true total count so they can detect if records were dropped.
+      // This prevents silent data loss in exports, reports, and GST filings.
+      const [transactions, total] = await Promise.all([
+        prisma.transaction.findMany({
+          where,
+          include: {
+            category: true,
+            project: true,
+          },
+          orderBy,
+          take: 10_000,
+        }),
+        prisma.transaction.count({ where }),
+      ])
+      return { transactions, total }
     }
   }
 )
@@ -347,12 +354,15 @@ export const updateTransaction = async (id: string, userId: string, data: Transa
 }
 
 export const updateTransactionFiles = async (id: string, userId: string, files: string[]): Promise<Transaction> => {
-  const transaction = await prisma.transaction.update({
-    where: { id, userId },
-    data: { files },
-  })
-
+  // syncTransactionFiles handles ALL updates (files column + join table) atomically in a single $transaction.
+  // This ensures the JSON column and TransactionFile join table never diverge.
   await syncTransactionFiles(id, userId, files)
+
+  // Return the updated transaction
+  const transaction = await getTransactionById(id, userId)
+  if (!transaction) {
+    throw new Error(`Transaction ${id} not found after file update`)
+  }
   return transaction
 }
 
@@ -364,15 +374,20 @@ export const reverseTransaction = async (id: string, userId: string): Promise<Tr
   const transaction = await getTransactionById(id, userId)
 
   if (transaction && transaction.status === "active") {
+    // CRITICAL: Audit log written AFTER successful DB update (not before)
+    // This ensures audit records match actual DB state — if update fails, no phantom audit entry
+    const updated = await prisma.transaction.update({
+      where: { id, userId },
+      data: { status: TransactionStatus.reversed },
+    })
+
+    // Log the change after confirming it succeeded
     logAudit(userId, "transaction", id, "update",
       sanitizeForAudit(transaction as unknown as Record<string, unknown>),
       { ...sanitizeForAudit(transaction as unknown as Record<string, unknown>), status: "reversed" }
     )
 
-    return await prisma.transaction.update({
-      where: { id, userId },
-      data: { status: TransactionStatus.reversed },
-    })
+    return updated
   }
 }
 
@@ -395,16 +410,23 @@ export const bulkReverseTransactions = async (ids: string[], userId: string) => 
   const transactions = await prisma.transaction.findMany({
     where: { id: { in: ids }, userId, status: TransactionStatus.active },
   })
+
+  // CRITICAL: Perform DB update BEFORE writing audit logs
+  // This ensures audit records only exist for state changes that actually succeeded
+  const result = await prisma.transaction.updateMany({
+    where: { id: { in: ids }, userId },
+    data: { status: TransactionStatus.reversed },
+  })
+
+  // Write audit logs after confirming the update succeeded
   for (const tx of transactions) {
     logAudit(userId, "transaction", tx.id, "update",
       sanitizeForAudit(tx as unknown as Record<string, unknown>),
       { ...sanitizeForAudit(tx as unknown as Record<string, unknown>), status: "reversed" }
     )
   }
-  return await prisma.transaction.updateMany({
-    where: { id: { in: ids }, userId },
-    data: { status: TransactionStatus.reversed },
-  })
+
+  return result
 }
 
 /** @deprecated Use bulkReverseTransactions instead. */

@@ -15,15 +15,11 @@ const nextConfig: NextConfig = {
     },
   },
   headers: async () => {
-    // CSP: in dev Next.js turbopack requires unsafe-eval for HMR, but in
-    // production we drop it. unsafe-inline remains for inline styles the
-    // Next.js runtime still emits; moving to a nonce-based policy is a
-    // larger refactor tracked separately.
-    const isDev = process.env.NODE_ENV !== "production"
-    const scriptSrc = isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-      : "script-src 'self' 'unsafe-inline'"
-
+    // NOTE: Content-Security-Policy is set per-request in middleware.ts with a
+    // cryptographic nonce, which replaces 'unsafe-inline'. Static headers here
+    // cannot carry a nonce (they are fixed at build time), so CSP lives only in
+    // middleware. All other security headers that don't need per-request values
+    // remain here.
     return [
       {
         source: "/(.*)",
@@ -39,22 +35,6 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "X-DNS-Prefetch-Control", value: "on" },
-          {
-            // H-5: unsafe-eval removed in production.
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              scriptSrc,
-              "style-src 'self' 'unsafe-inline'",     // Tailwind / Next.js inline styles
-              "img-src 'self' data: blob:",           // data: for base64, blob: for previews
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.sentry.io",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "object-src 'none'",
-            ].join("; "),
-          },
         ],
       },
     ]

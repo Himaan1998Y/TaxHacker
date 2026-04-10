@@ -41,22 +41,63 @@ export function computeCookieToken(password: string): string {
 /**
  * Timing-safe comparison of two strings.
  * Prevents timing attacks on cookie/token comparison.
+ * Always compares fixed-length (64-byte) buffers to prevent length oracle attacks.
+ * Both a and b MUST be exactly 64 characters (HMAC-SHA256 or SHA-256 hex digests).
+ *
+ * CRITICAL: This function ONLY works with 64-char inputs. Do not use with variable-length tokens.
  */
 export function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    // Still do a dummy compare to avoid early-exit timing leak
-    crypto.timingSafeEqual(Buffer.from(a), Buffer.from(a))
+  // CRITICAL: Always compare fixed-size buffers to prevent timing-based length oracle attacks.
+  // Pad or truncate both inputs to exactly 64 bytes to ensure constant-time comparison.
+  // An attacker cannot distinguish short tokens from long ones via response timing.
+
+  const FIXED_SIZE = 64
+
+  // Pad inputs with null bytes if shorter, truncate if longer
+  const bufA = Buffer.alloc(FIXED_SIZE)
+  const bufB = Buffer.alloc(FIXED_SIZE)
+
+  Buffer.from(a, "utf-8").copy(bufA, 0, 0, FIXED_SIZE)
+  Buffer.from(b, "utf-8").copy(bufB, 0, 0, FIXED_SIZE)
+
+  // Log length mismatches for debugging, but don't skip comparison
+  if (a.length !== FIXED_SIZE || b.length !== FIXED_SIZE) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn(
+        `[Auth] Token length mismatch: expected ${FIXED_SIZE} chars, got ${a.length} and ${b.length}. ` +
+        `This usually indicates a malformed cookie or misconfigured token format.`
+      )
+    }
+  }
+
+  // Compare using timing-safe function (constant-time regardless of input length)
+  try {
+    return crypto.timingSafeEqual(bufA, bufB)
+  } catch {
+    // timingSafeEqual throws if buffers aren't equal length (shouldn't happen since both are FIXED_SIZE)
     return false
   }
-  return crypto.timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"))
 }
+
+// Flag to log deprecation warning only once, not on every request
+let deprecationWarningLogged = false
 
 /**
  * @deprecated Use computeCookieToken instead.
  * Kept for backward compatibility: existing cookies in browsers use this hash.
- * Remove after 30-day migration window.
+ * Remove after LEGACY_AUTH_CUTOFF date (2026-05-01).
  */
 export function hashSelfHostedToken(password: string): string {
+  // Log warning only once at first invocation (not on every request)
+  if (process.env.NODE_ENV === "production" && !deprecationWarningLogged) {
+    deprecationWarningLogged = true
+    const daysUntilCutoff = Math.ceil((LEGACY_AUTH_CUTOFF.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    console.warn(
+      `[TaxHacker] Legacy auth token format in use (deprecated). ` +
+      `Cutoff date: 2026-05-01 (${daysUntilCutoff} days). ` +
+      `Users will need to re-authenticate after this date.`
+    )
+  }
   return crypto
     .createHash("sha256")
     .update(password + config.auth.secret)

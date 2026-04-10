@@ -141,11 +141,14 @@ export async function generateEmbedding(text: string, userId?: string): Promise<
  * Free tier: 1500 RPM, model: text-embedding-004
  */
 async function geminiEmbed(text: string, apiKey: string): Promise<number[]> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`
 
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
     body: JSON.stringify({
       model: "models/text-embedding-004",
       content: { parts: [{ text }] },
@@ -155,7 +158,14 @@ async function geminiEmbed(text: string, apiKey: string): Promise<number[]> {
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`Gemini Embedding API error ${response.status}: ${error}`)
+    // Scrub error body to prevent API key exposure in logs
+    // Remove: query string keys (key=AIza...), JSON keys (x-goog-api-key: AIza), and any AIza* string
+    const safeError = error
+      .substring(0, 200)
+      .replace(/key=[^&\s]+/gi, "key=REDACTED")                      // Query string: key=...
+      .replace(/["\']?(?:api[_-]?key|x-goog-api-key)["\']?\s*[:=]\s*["\']?AIza[^\s"\']+["\']?/gi, "key=REDACTED") // JSON/header keys
+      .replace(/AIza[a-zA-Z0-9_-]{34}/g, "key=REDACTED")            // Bare Gemini key format
+    throw new Error(`Gemini Embedding API error ${response.status}: ${safeError}`)
   }
 
   const data = await response.json()
@@ -290,18 +300,31 @@ export async function detectDuplicates(
 }
 
 /**
+ * Result row from semantic search query.
+ */
+type SemanticSearchRow = {
+  id: string
+  name: string
+  merchant: string
+  total: number
+  type: string
+  issuedAt: Date
+  similarity: number
+}
+
+/**
  * Semantic search across transactions.
  */
 export async function semanticSearch(
   query: string,
   userId: string,
   limit: number = 20
-): Promise<Array<{ id: string; name: string; merchant: string; total: number; type: string; issuedAt: Date; similarity: number }>> {
+): Promise<SemanticSearchRow[]> {
   if (!(await hasPgvector())) return []
   const embedding = await generateEmbedding(query, userId)
   const vectorStr = `[${embedding.join(",")}]`
 
-  const results = await prisma.$queryRawUnsafe(
+  const results = await prisma.$queryRawUnsafe<SemanticSearchRow[]>(
     `
     SELECT id, name, merchant, total, type, issued_at as "issuedAt",
            1 - ("embedding" <=> $1::vector) as similarity
@@ -316,5 +339,5 @@ export async function semanticSearch(
     limit
   )
 
-  return results as any[]
+  return results
 }

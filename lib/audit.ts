@@ -3,7 +3,19 @@ import { headers } from "next/headers"
 import { matchesKeyword } from "@/lib/utils"
 import { appendToDLQ } from "@/lib/audit-dlq"
 
-export type AuditAction = "create" | "update" | "delete"
+/**
+ * All valid audit actions — array is source of truth.
+ * Type AuditAction is derived from this array to ensure type/runtime consistency.
+ * Used for runtime validation in DLQ drain (Companies Act 2023 compliance).
+ */
+export const VALID_AUDIT_ACTIONS = ["create", "update", "delete"] as const
+
+/**
+ * Derive type from the array to prevent type drift.
+ * Any extension of VALID_AUDIT_ACTIONS automatically updates the type.
+ */
+export type AuditAction = (typeof VALID_AUDIT_ACTIONS)[number]
+
 export type AuditEntityType = "transaction" | "file" | "setting" | "category" | "project" | "user"
 
 /**

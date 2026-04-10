@@ -192,3 +192,189 @@
 [2026-04-08T21:10:39.243Z] file: f:\TaxHacker\app\api\agent\transactions\route.ts
 
 [2026-04-08T21:10:58.261Z] file: f:\TaxHacker\app\api\agent\transactions\route.ts
+
+[2026-04-08T22:21:32.355Z] file: f:\TaxHacker\tests\export.test.ts
+
+[2026-04-08T22:21:58.683Z] file: f:\TaxHacker\tests\gstr3b.test.ts
+
+[2026-04-08T22:22:34.467Z] file: f:\TaxHacker\tests\gstr3b.test.ts
+
+[2026-04-08T22:22:46.341Z] file: f:\TaxHacker\tests\gstr3b.test.ts
+
+[2026-04-08T22:22:57.825Z] file: f:\TaxHacker\tests\gstr3b.test.ts
+
+[2026-04-08T23:44:59.087Z] file: f:\TaxHacker\.github\workflows\test.yml
+
+[2026-04-09T08:08:39.929Z] file: f:\TaxHacker\lib\gstr1.ts
+
+[2026-04-09T08:10:00.081Z] file: f:\TaxHacker\tests\gstr1.test.ts
+
+[2026-04-09T09:02:34.190Z] file: f:\TaxHacker\models\export_and_import.ts
+
+[2026-04-09T09:19:08.159Z] file: f:\TaxHacker\tests\export_and_import.test.ts
+
+[2026-04-09T09:30:52.512Z] file: f:\TaxHacker\tests\export_and_import.test.ts
+
+[2026-04-09T09:36:12.555Z] file: f:\TaxHacker\models\files.ts
+
+[2026-04-09T09:41:35.635Z] file: f:\TaxHacker\app\(app)\apps\gstr3b\components\gstr3b-report.tsx
+
+[2026-04-09T09:41:50.715Z] file: f:\TaxHacker\app\(app)\apps\gstr3b\components\gstr3b-report.tsx
+
+[2026-04-09T10:18:41.438Z] file: f:\TaxHacker\lib\encryption.ts
+
+[2026-04-09T10:18:55.944Z] file: f:\TaxHacker\tests\encryption.test.ts
+
+[2026-04-09T10:19:11.453Z] file: f:\TaxHacker\tests\encryption.test.ts
+
+[2026-04-09T10:19:17.082Z] file: f:\TaxHacker\tests\encryption.test.ts
+
+[2026-04-09T10:20:04.247Z] file: f:\TaxHacker\tests\encryption.test.ts
+
+[2026-04-09T10:21:29.603Z] file: f:\TaxHacker\tests\encryption.test.ts
+
+[2026-04-09T10:21:34.888Z] file: f:\TaxHacker\tests\encryption.test.ts
+
+[2026-04-09T10:21:40.964Z] file: f:\TaxHacker\tests\encryption.test.ts
+
+[2026-04-09T10:40:20.937Z] file: f:\TaxHacker\lib\gstr1.ts
+
+[2026-04-09T10:40:38.112Z] file: f:\TaxHacker\lib\gstr1.ts
+
+[2026-04-09T10:40:46.871Z] file: f:\TaxHacker\lib\gstr1.ts
+
+[2026-04-09T10:40:52.509Z] file: f:\TaxHacker\lib\gstr1.ts
+
+[2026-04-09T10:41:07.789Z] file: f:\TaxHacker\lib\gstr1.ts
+
+[2026-04-09T10:41:19.359Z] file: f:\TaxHacker\lib\gstr1.ts
+
+[2026-04-09T10:41:54.705Z] file: f:\TaxHacker\tests\gstr1-json.test.ts
+
+[2026-04-09T10:42:38.826Z] file: f:\TaxHacker\app\(app)\apps\gstr1\export\route.ts
+
+[2026-04-09T10:43:01.907Z] file: f:\TaxHacker\app\(app)\apps\gstr1\components\gstr1-report.tsx
+
+[2026-04-09T10:45:06.119Z] file: f:\TaxHacker\tests\gstr1-hsn-split.test.ts
+
+[2026-04-09T11:15:09.503Z] file: f:\TaxHacker\lib\encryption.ts
+
+[2026-04-09T11:20:22.507Z] file: f:\TaxHacker\brain\audits\2026-04-09_tier0_review.md
+
+[2026-04-09T11:30:35.908Z] file: f:\TaxHacker\app\api\razorpay\webhook\route.ts
+
+[2026-04-09T11:31:02.380Z] file: f:\TaxHacker\tests\razorpay-webhook.test.ts
+
+[2026-04-09T11:34:17.605Z] file: f:\TaxHacker\app\api\self-hosted-auth\route.ts
+
+[2026-04-09T11:36:05.457Z] file: f:\TaxHacker\models\transactions.ts
+
+[2026-04-09T11:38:45.867Z] file: f:\TaxHacker\lib\gstr3b.ts
+
+[2026-04-09T11:38:57.971Z] file: f:\TaxHacker\lib\gstr3b.ts
+
+[2026-04-09T11:39:04.884Z] file: f:\TaxHacker\lib\gstr3b.ts
+
+[2026-04-09T11:39:40.059Z] file: f:\TaxHacker\tests\gstr3b.test.ts
+
+[2026-04-09T11:40:10.457Z] file: f:\TaxHacker\tests\gstr3b.test.ts
+
+[2026-04-09T11:43:44.879Z] file: f:\TaxHacker\lib\embeddings.ts
+
+[2026-04-09T11:43:55.641Z] file: f:\TaxHacker\lib\embeddings.ts
+
+[2026-04-09T11:44:08.452Z] file: f:\TaxHacker\lib\embeddings.ts
+
+[2026-04-09T11:44:16.516Z] file: f:\TaxHacker\lib\embeddings.ts
+
+[2026-04-09T11:44:58.426Z] file: f:\TaxHacker\tests\embeddings-pgvector.test.ts
+
+[2026-04-09T11:47:45.800Z] file: f:\TaxHacker\prisma\schema.prisma
+
+[2026-04-09T11:48:57.232Z] file: f:\TaxHacker\prisma\migrations\20260409_add_rate_limits\migration.sql
+
+[2026-04-09T11:49:22.566Z] file: f:\TaxHacker\lib\rate-limit-db.ts
+
+[2026-04-09T11:49:32.527Z] file: f:\TaxHacker\app\api\agent\auth.ts
+
+[2026-04-09T11:49:47.613Z] file: f:\TaxHacker\app\api\agent\auth.ts
+
+[2026-04-09T11:50:49.044Z] file: f:\TaxHacker\tests\rate-limit-db.test.ts
+
+[2026-04-09T13:44:39.668Z] file: f:\TaxHacker\prisma\schema.prisma
+
+[2026-04-09T13:47:17.406Z] file: f:\TaxHacker\prisma\migrations\20260409_add_transactions_user_status_index\migration.sql
+
+[2026-04-09T14:28:21.912Z] file: f:\TaxHacker\brain\audits\2026-04-09_tier1_complete.md
+
+[2026-04-10T11:26:01.077Z] file: f:\TaxHacker\app\(app)\files\actions.ts
+
+[2026-04-10T11:31:21.005Z] file: f:\TaxHacker\lib\utils.ts
+
+[2026-04-10T11:31:28.734Z] file: f:\TaxHacker\lib\audit.ts
+
+[2026-04-10T11:31:38.101Z] file: f:\TaxHacker\lib\audit.ts
+
+[2026-04-10T11:31:46.405Z] file: f:\TaxHacker\lib\gstr3b.ts
+
+[2026-04-10T11:31:56.727Z] file: f:\TaxHacker\lib\gstr3b.ts
+
+[2026-04-10T11:32:11.921Z] file: f:\TaxHacker\tests\audit.test.ts
+
+[2026-04-10T11:33:27.198Z] file: f:\TaxHacker\lib\utils.ts
+
+[2026-04-10T11:33:33.160Z] file: f:\TaxHacker\lib\audit.ts
+
+[2026-04-10T11:33:39.920Z] file: f:\TaxHacker\lib\audit.ts
+
+[2026-04-10T11:33:49.286Z] file: f:\TaxHacker\lib\audit.ts
+
+[2026-04-10T11:33:56.868Z] file: f:\TaxHacker\lib\audit.ts
+
+[2026-04-10T11:34:27.443Z] file: f:\TaxHacker\lib\utils.ts
+
+[2026-04-10T12:57:19.718Z] file: f:\TaxHacker\middleware.ts
+
+[2026-04-10T13:05:26.285Z] file: f:\TaxHacker\sentry.server.config.ts
+
+[2026-04-10T13:05:31.525Z] file: f:\TaxHacker\sentry.edge.config.ts
+
+[2026-04-10T13:06:29.440Z] file: f:\TaxHacker\app\(app)\settings\actions.ts
+
+[2026-04-10T13:08:04.397Z] file: f:\TaxHacker\lib\utils.ts
+
+[2026-04-10T13:08:28.759Z] file: f:\TaxHacker\app\(app)\apps\invoices\actions.ts
+
+[2026-04-10T13:08:33.281Z] file: f:\TaxHacker\app\(app)\apps\invoices\actions.ts
+
+[2026-04-10T13:08:52.548Z] file: f:\TaxHacker\components\unsorted\analyze-form.tsx
+
+[2026-04-10T14:17:43.476Z] file: f:\TaxHacker\models\transactions.ts
+
+[2026-04-10T14:17:59.146Z] file: f:\TaxHacker\app\(app)\dashboard\page.tsx
+
+[2026-04-10T14:18:09.776Z] file: f:\TaxHacker\components\dashboard\gst-summary-widget.tsx
+
+[2026-04-10T14:21:23.908Z] file: f:\TaxHacker\lib\self-hosted-auth.ts
+
+[2026-04-10T14:21:28.607Z] file: f:\TaxHacker\middleware.ts
+
+[2026-04-10T14:21:35.979Z] file: f:\TaxHacker\middleware.ts
+
+[2026-04-10T14:21:44.963Z] file: f:\TaxHacker\instrumentation.ts
+
+[2026-04-10T14:24:16.154Z] file: f:\TaxHacker\lib\embeddings.ts
+
+[2026-04-10T14:29:45.093Z] file: f:\TaxHacker\app\api\agent\embeddings\route.ts
+
+[2026-04-10T14:29:50.572Z] file: f:\TaxHacker\app\api\agent\embeddings\route.ts
+
+[2026-04-10T14:29:56.066Z] file: f:\TaxHacker\app\api\agent\embeddings\route.ts
+
+[2026-04-10T14:30:06.810Z] file: f:\TaxHacker\app\api\agent\embeddings\route.ts
+
+[2026-04-10T14:45:48.394Z] file: f:\TaxHacker\lib\audit.ts
+
+[2026-04-10T14:46:41.188Z] file: f:\TaxHacker\tests\audit-dlq.test.ts
+
+[2026-04-10T16:52:14.742Z] file: f:\TaxHacker\lib\audit-dlq.ts

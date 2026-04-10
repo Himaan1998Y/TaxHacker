@@ -1,5 +1,6 @@
 import config from "@/lib/config"
 import type { Metadata, Viewport } from "next"
+import { headers } from "next/headers"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -70,12 +71,18 @@ const jsonLd = {
   },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Read the per-request nonce set by middleware.ts.
+  // This nonce is also set in the CSP header (Content-Security-Policy: script-src 'nonce-…')
+  // so the browser allows exactly this inline script and blocks everything else.
+  const nonce = (await headers()).get("x-nonce") ?? ""
+
   return (
     <html lang="en-IN">
       <body className="min-h-screen bg-white antialiased">
         <script
           type="application/ld+json"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {children}

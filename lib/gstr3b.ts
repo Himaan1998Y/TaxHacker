@@ -280,7 +280,8 @@ function computeTable4(
     // exactly (they come from the same category table the category code
     // lives in, so they're case-consistent already). Default keywords use
     // the shared matchesKeyword helper for case-insensitive matching.
-    const isBlocked = blockedCodes.has(tx.categoryCode || "") ||
+    // Guard: only check if categoryCode is non-empty to prevent empty-string false positive matches.
+    const isBlocked = (tx.categoryCode && blockedCodes.has(tx.categoryCode)) ||
       matchesKeyword(tx.categoryCode || "", DEFAULT_ITC_BLOCKED_KEYWORDS)
 
     if (isBlocked) {
@@ -338,10 +339,10 @@ function computeTable5(expenses: any[], businessStateCode: string | null): Table
     const isInterState = isInterStateSupply(gstTx, businessStateCode)
     const category = tx.categoryCode || ""
 
-    if (category.includes("exempt")) {
+    if (matchesKeyword(category, ["exempt"])) {
       if (isInterState) exemptInter += taxableValue
       else exemptIntra += taxableValue
-    } else if (category.includes("non_gst") || category.includes("non-gst")) {
+    } else if (matchesKeyword(category, ["non_gst", "non-gst"])) {
       if (isInterState) nonGSTInter += taxableValue
       else nonGSTIntra += taxableValue
     } else {

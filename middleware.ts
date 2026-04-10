@@ -137,7 +137,8 @@ export default async function middleware(request: NextRequest) {
         timingSafeEqual(authCookie, hashSelfHostedToken(password))
       if (!validNew && !validLegacy) {
         // Allow the password verification endpoint and static assets through
-        if (pathname === "/api/self-hosted-auth" || pathname === "/api/health" || pathname.startsWith("/api/agent/") || pathname.startsWith("/_next/") || pathname.startsWith("/logo/")) {
+        // NOTE: /api/agent/ is INTENTIONALLY NOT included — agent API requires auth
+        if (pathname === "/api/self-hosted-auth" || pathname === "/api/health" || pathname.startsWith("/_next/") || pathname.startsWith("/logo/")) {
           return nextWithCSP()
         }
         // Redirect to password page — redirects don't render scripts, but include CSP anyway
