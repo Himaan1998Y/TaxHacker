@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { headers } from "next/headers"
+import { matchesKeyword } from "@/lib/utils"
 
 export type AuditAction = "create" | "update" | "delete"
 export type AuditEntityType = "transaction" | "file" | "setting" | "category" | "project" | "user"
@@ -59,10 +60,14 @@ export function sanitizeForAudit(record: Record<string, unknown>): Record<string
   delete sanitized.cachedParseResult
   delete sanitized.embedding
 
-  // Mask sensitive settings
+  // Mask sensitive settings (case-insensitive to avoid the same bug
+  // fixed in Tier 1.7 ITC blocker and Tier 2.12 audit sanitizer)
+  const SENSITIVE_KEYWORDS = [
+    "api_key", "secret", "password", "gstin", "_pan",
+    "pan_", "token", "bank", "account_number",
+  ] as const
   if (sanitized.code && typeof sanitized.value === "string") {
-    const code = sanitized.code as string
-    if (code.includes("api_key") || code.includes("secret") || code.includes("password")) {
+    if (matchesKeyword(sanitized.code as string, SENSITIVE_KEYWORDS)) {
       sanitized.value = sanitized.value ? "***" : null
     }
   }

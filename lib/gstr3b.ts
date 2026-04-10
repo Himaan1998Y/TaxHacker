@@ -5,6 +5,7 @@
 import { formatDate } from "date-fns"
 import { INDIAN_STATES } from "./indian-states"
 import { transactionToGSTR1, generateGSTR1Report, GSTR1Summary } from "./gstr1"
+import { matchesKeyword } from "./utils"
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -275,14 +276,12 @@ function computeTable4(
     const gstTx = transactionToGSTR1(tx)
     if (gstTx.gstRate <= 0) continue
 
-    // Normalise to lowercase before keyword matching so a user category
-    // code like "Food_Beverage" still trips the "food" keyword. User-
-    // configured category codes in itcBlockedCategories are matched
+    // User-configured category codes in itcBlockedCategories are matched
     // exactly (they come from the same category table the category code
-    // lives in, so they're case-consistent already).
-    const categoryCode = (tx.categoryCode || "").toLowerCase()
+    // lives in, so they're case-consistent already). Default keywords use
+    // the shared matchesKeyword helper for case-insensitive matching.
     const isBlocked = blockedCodes.has(tx.categoryCode || "") ||
-      DEFAULT_ITC_BLOCKED_KEYWORDS.some(kw => categoryCode.includes(kw))
+      matchesKeyword(tx.categoryCode || "", DEFAULT_ITC_BLOCKED_KEYWORDS)
 
     if (isBlocked) {
       reversedIGST += gstTx.igst

@@ -91,6 +91,26 @@ describe('sanitizeForAudit', () => {
     expect(result).toEqual(record)
   })
 
+  it('masks GSTIN values (India-specific PII)', () => {
+    const result = sanitizeForAudit({ code: 'business_gstin', value: '07AADCT1234A1Z0' })
+    expect(result.value).toBe('***')
+  })
+
+  it('masks PAN values', () => {
+    const result = sanitizeForAudit({ code: 'owner_pan', value: 'ABCDE1234F' })
+    expect(result.value).toBe('***')
+  })
+
+  it('masks bank account numbers', () => {
+    const result = sanitizeForAudit({ code: 'bank_account_number', value: '1234567890' })
+    expect(result.value).toBe('***')
+  })
+
+  it('masks case-insensitively (e.g. "API_KEY")', () => {
+    const result = sanitizeForAudit({ code: 'Google_API_KEY', value: 'sk-xxx' })
+    expect(result.value).toBe('***')
+  })
+
   it('does not mutate the original record', () => {
     const record = {
       id: '123',

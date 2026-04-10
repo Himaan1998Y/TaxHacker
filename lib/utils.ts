@@ -98,6 +98,16 @@ export async function fetchAsBase64(url: string): Promise<string | null> {
   }
 }
 
+/**
+ * Case-insensitive keyword match: lowercases `haystack` once, then checks
+ * every needle via `.includes()`. Prevents the recurring bug where mixed-case
+ * category codes or setting keys slip through exact-case `.includes()`.
+ */
+export function matchesKeyword(haystack: string, needles: readonly string[]): boolean {
+  const lower = haystack.toLowerCase()
+  return needles.some(n => lower.includes(n))
+}
+
 export function encodeFilename(filename: string): string {
   const encoded = encodeURIComponent(filename)
   return `UTF-8''${encoded}`
