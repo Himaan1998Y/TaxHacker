@@ -90,7 +90,8 @@
   },
   "pnpm": {
     "overrides": {
-      "langsmith": ">=0.4.6"
+      "langsmith": ">=0.4.6",
+      "axios": ">=1.15.0"
     }
   }
 }
