@@ -89,8 +89,6 @@ export async function uploadFilesAction(formData: FormData): Promise<ActionState
     const storageUsed = await getDirectorySize(getUserUploadsDirectory(user))
     await updateUser(user.id, { storageUsed })
 
-    console.log("uploadedFiles", uploadedFiles)
-
     revalidatePath("/unsorted")
 
     return { success: true, error: null }
