@@ -1,5 +1,5 @@
 import { default as globalConfig } from "@/lib/config"
-import { computeCookieToken, hashSelfHostedToken, timingSafeEqual } from "@/lib/self-hosted-auth"
+import { computeCookieToken, hashSelfHostedToken, timingSafeEqual, LEGACY_AUTH_CUTOFF } from "@/lib/self-hosted-auth"
 import { rateLimit } from "@/lib/rate-limit"
 import { getSessionCookie } from "better-auth/cookies"
 import { NextRequest, NextResponse } from "next/server"
@@ -131,9 +131,10 @@ export default async function middleware(request: NextRequest) {
     if (globalConfig.selfHosted.password) {
       const authCookie = request.cookies.get("taxhacker_sh_auth")?.value ?? ""
       const password = globalConfig.selfHosted.password!
-      // Accept both new HMAC token and legacy SHA-256 token during migration window
+      // Accept both new HMAC token and legacy SHA-256 token, but only if before cutoff
       const validNew = timingSafeEqual(authCookie, computeCookieToken(password))
-      const validLegacy = timingSafeEqual(authCookie, hashSelfHostedToken(password))
+      const validLegacy = Date.now() < LEGACY_AUTH_CUTOFF.getTime() &&
+        timingSafeEqual(authCookie, hashSelfHostedToken(password))
       if (!validNew && !validLegacy) {
         // Allow the password verification endpoint and static assets through
         if (pathname === "/api/self-hosted-auth" || pathname === "/api/health" || pathname.startsWith("/api/agent/") || pathname.startsWith("/_next/") || pathname.startsWith("/logo/")) {

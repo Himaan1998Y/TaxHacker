@@ -5,6 +5,13 @@ import config from "@/lib/config"
 const BCRYPT_ROUNDS = 12
 
 /**
+ * After this date, legacy SHA-256 auth cookies are no longer accepted.
+ * Users will need to re-authenticate with their password.
+ * Set to 2026-05-01 (3 weeks from Tier 2 deployment, 2026-04-10).
+ */
+export const LEGACY_AUTH_CUTOFF = new Date("2026-05-01T00:00:00Z")
+
+/**
  * Hash a password for storage using bcrypt.
  * Use this when storing the admin password in the DB.
  */
