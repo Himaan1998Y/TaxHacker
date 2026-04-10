@@ -23,8 +23,7 @@ export async function getOnboardingStatus(userId: string): Promise<OnboardingSta
       settings.mistral_api_key ||
       settings.openrouter_api_key
     ),
-    hasCurrencySet:
-      !!settings.default_currency && settings.default_currency === "INR",
+    hasCurrencySet: !!settings.default_currency,
     hasTransaction: fileCount > 0,
     hasAnalyzedTransaction: analyzedCount > 0,
   }
